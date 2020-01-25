@@ -6,4 +6,4 @@ main = do
   (filename:_) <- getArgs
   content <- readFile filename
 
-  print $ show (alexScanTokens content :: [Token])
+  print $ show (alexScanTokens content :: [Token]) ++ "."
