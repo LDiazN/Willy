@@ -11,8 +11,14 @@
 $alpha = [a-zA-z]
 $num = [0-9]
 $alphaNum = [a-zA-z0-9]
-$anything = ~[]
+$anything = ~$white
 $white = [\ \t\n\f\v\r]
+
+--For comments:
+$notCurly = [.\n] # \}
+@chars            = \} $notCurly*
+@commClose = \}\}
+
 tokens :-
     $white+                     ;
 
@@ -81,6 +87,58 @@ tokens :-
     or                          { \ p s -> TkOr p}
     not                         { \ p s -> TkNot p}
 
+    begin\-work                 { \ p s -> TkBeginWork p}
+    end\-work                   { \ p s -> TkEndWork p}
+    on                          { \ p s -> TkOn p}
+
+    if                          { \ p s -> TkIf p}
+    then                        { \ p s -> TkThen p}
+    else                        { \ p s -> TkElse p}
+
+    repeat                      { \ p s -> TkRepeat p}
+    times                       { \ p s -> TkTimes p}
+    
+    while                       { \ p s -> TkWhile p}
+    do                          { \ p s -> TkDo p}
+
+    begin                       { \ p s -> TkBegin p}
+    end                         { \ p s -> TkEnd p}
+    
+    define                      { \ p s -> TkDefine p}
+    as                          { \ p s -> TkAs p}
+
+    move                        { \ p s -> TkMove p}
+    turn\-left                  { \ p s -> TkTurnLeft p}
+    turn\-right                 { \ p s -> TkTurnRight p}
+    pick                        { \ p s -> TkPick p}
+    drop                        { \ p s -> TkDrop p}
+    set                         { \ p s -> TkSet p}
+    clear                       { \ p s -> TkClear p}
+    flip                        { \ p s -> TkFlip p}
+    terminate                   { \ p s -> TkTerminate p}
+
+    front\-clear                { \ p s -> TkFrontClear p}
+    left\-clear                 { \ p s -> TkLeftClear p}
+    right\-clear                { \ p s -> TkRightClear p}
+    looking\-north              { \ p s -> TkLookingNorth p}
+    looking\-east               { \ p s -> TkLookingEast p}
+    looking\-south              { \ p s -> TkLookingSouth p}
+    looking\-west               { \ p s -> TkLookingWest p}
+
+    found                       { \ p s -> TkFound p}
+    carrying                    { \ p s -> TkCarrying p}
+
+
+    \(                          { \ p s -> TkParOpen p}
+    \)                          { \ p s -> TkParClose p}
+
+    \-\- ~[]* \n                { \ p s -> TkInLineComm p}
+
+    \{\{ ( ($notCurly)* | \}($notCurly)+ ) \}\}  { \ p s -> TkLongComm p}
+
+    
+    
+
     $num+                       { \ p s -> TkInt p $ read s }
     
     [$alpha\_][$alphaNum\_]*    { \ p s -> TkId p s}
@@ -88,7 +146,7 @@ tokens :-
 
 
 
-    --$anything+                  {\ p s -> TkUndef p s}
+    $anything+                  {\ p s -> TkUndef p s}
 
 
 
@@ -153,6 +211,51 @@ data Token =
     TkAnd                   AlexPosn         |
     TkOr                    AlexPosn         |
     TkNot                   AlexPosn         |
+
+    TkBeginWork             AlexPosn         |
+    TkOn                    AlexPosn         |
+    TkEndWork               AlexPosn         |
+
+    TkIf                    AlexPosn         |
+    TkThen                  AlexPosn         |
+    TkElse                  AlexPosn         |
+
+    TkRepeat                AlexPosn         |
+    TkTimes                 AlexPosn         |
+
+    TkWhile                 AlexPosn         |
+    TkDo                    AlexPosn         |
+
+    TkBegin                 AlexPosn         |
+    TkEnd                   AlexPosn         |
+
+    TkDefine                AlexPosn         |
+    TkAs                    AlexPosn         |
+
+    TkMove                  AlexPosn         |
+    TkTurnLeft              AlexPosn         |
+    TkTurnRight             AlexPosn         |
+    TkPick                  AlexPosn         |
+    TkDrop                  AlexPosn         |
+    TkSet                   AlexPosn         |
+    TkClear                 AlexPosn         |
+    TkFlip                  AlexPosn         |
+    TkTerminate             AlexPosn         |
+
+    TkFrontClear            AlexPosn         |
+    TkLeftClear             AlexPosn         |
+    TkRightClear            AlexPosn         |
+    TkLookingNorth          AlexPosn         |
+    TkLookingEast           AlexPosn         |
+    TkLookingSouth          AlexPosn         |
+    TkLookingWest           AlexPosn         |
+
+    TkFound                 AlexPosn         |
+    TkParOpen               AlexPosn         |    
+    TkParClose              AlexPosn         |    
+    TkCarrying              AlexPosn         |
+    TkInLineComm            AlexPosn         |
+    TkLongComm              AlexPosn         |    
 
     TkInt                   AlexPosn Integer |
 
