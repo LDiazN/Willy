@@ -3,6 +3,7 @@
 -- Analizador lexicográfico para el lenguaje "Willy*"
 {
     module Lexer where
+    import Tokens
 
 }
 
@@ -152,117 +153,7 @@ tokens :-
 
 -- Token types:
 
-{
-data Token = 
-    TkBeginWorld            AlexPosn         |
-    TkEndWorld              AlexPosn         |
-   
-   
-    TkWorld                 AlexPosn         |
-   
-    TkWall                  AlexPosn         |
-   
-    TkNorth                 AlexPosn         |
-    TkSouth                 AlexPosn         |
-    TkEast                  AlexPosn         |
-    TkWest                  AlexPosn         |
-
-    TkFrom                  AlexPosn         |
-    TkTo                    AlexPosn         |
-
-    TkObjectType            AlexPosn         |
-    TkOf                    AlexPosn         |
-
-    TkColor                 AlexPosn         |
-    TkColorRed              AlexPosn         |
-    TkColorBlue             AlexPosn         |
-    TkColorMagenta          AlexPosn         |
-    TkColorCyan             AlexPosn         |
-    TkColorGreen            AlexPosn         |
-    TkColorYellow           AlexPosn         |
-
-    TkPlace                 AlexPosn         |
-    TkAt                    AlexPosn         |
-    TkIn                    AlexPosn         |
-
-    TkBasket                AlexPosn         |
-    TkBasketOfCapacity      AlexPosn         |
-    TkCapacity              AlexPosn         |
-
-    TkBoolean               AlexPosn         |
-    TkTrue                  AlexPosn         |
-    TkFalse                 AlexPosn         |
     
-    TkWith                  AlexPosn         |
-    TkInitial               AlexPosn         |
-    TkValue                 AlexPosn         |
-
-    TkHeading               AlexPosn         |
-    TkStart                 AlexPosn         |
-    
-    TkGoalIs                AlexPosn         |
-    TkGoal                  AlexPosn         |
-    TkIs                    AlexPosn         |
-    TkFinal                 AlexPosn         |
-
-    TkObjects               AlexPosn         |
-    TkWilly                 AlexPosn         |
-
-    TkAnd                   AlexPosn         |
-    TkOr                    AlexPosn         |
-    TkNot                   AlexPosn         |
-
-    TkBeginWork             AlexPosn         |
-    TkOn                    AlexPosn         |
-    TkEndWork               AlexPosn         |
-
-    TkIf                    AlexPosn         |
-    TkThen                  AlexPosn         |
-    TkElse                  AlexPosn         |
-
-    TkRepeat                AlexPosn         |
-    TkTimes                 AlexPosn         |
-
-    TkWhile                 AlexPosn         |
-    TkDo                    AlexPosn         |
-
-    TkBegin                 AlexPosn         |
-    TkEnd                   AlexPosn         |
-
-    TkDefine                AlexPosn         |
-    TkAs                    AlexPosn         |
-
-    TkMove                  AlexPosn         |
-    TkTurnLeft              AlexPosn         |
-    TkTurnRight             AlexPosn         |
-    TkPick                  AlexPosn         |
-    TkDrop                  AlexPosn         |
-    TkSet                   AlexPosn         |
-    TkClear                 AlexPosn         |
-    TkFlip                  AlexPosn         |
-    TkTerminate             AlexPosn         |
-
-    TkFrontClear            AlexPosn         |
-    TkLeftClear             AlexPosn         |
-    TkRightClear            AlexPosn         |
-    TkLookingNorth          AlexPosn         |
-    TkLookingEast           AlexPosn         |
-    TkLookingSouth          AlexPosn         |
-    TkLookingWest           AlexPosn         |
-
-    TkFound                 AlexPosn         |
-    TkParOpen               AlexPosn         |    
-    TkParClose              AlexPosn         |    
-    TkCarrying              AlexPosn         |
-    TkInLineComm            AlexPosn         |
-    TkLongComm              AlexPosn         |    
-
-    TkInt                   AlexPosn Integer |
-
-    TkId                    AlexPosn String  |
-
-    TkUndef                 AlexPosn String 
 
 
-    deriving (Eq, Show)
 }
