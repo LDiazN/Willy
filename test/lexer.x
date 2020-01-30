@@ -2,8 +2,8 @@
 -- Nathalia Silviera: 12-10921 
 -- Analizador lexicográfico para el lenguaje "Willy*"
 {
-    module Lexer where
-    import Tokens
+module Lexer where
+import Tokens
 
 }
 
@@ -148,14 +148,14 @@ tokens :-
     
     
 
-    $num+                       {storeToken TkInt $ read s }
+    --$num+                       {storeToken TkInt $ read }
     
-    [$alpha\_][$alphaNum\_]*    {storeToken TkId s}
+    --[$alpha\_][$alphaNum\_]*    {storeToken TkId s}
 
 
 
 
-    $anything+                  storeToken{TkUndef s}
+    --$anything+                  {storeToken TkUndef}
 
 
 
@@ -167,8 +167,8 @@ initSt = 0
 
 -- EOF Definition required by alex
 
-alexEOF :: Token
-alexEOF = TkEOF
+alexEOF :: Alex TokPos
+alexEOF = return (TkEOF, 0, 0)
 
 -- user state object definition required by alex:
 
@@ -192,7 +192,7 @@ getLexerErrors :: Alex [String]
 getLexerErrors = Alex $ \ st@AlexState {alex_ust = ust} -> Right (st, lexerErrors ust)
 
 setLexerErrors :: [String] -> Alex ()
-setLexerErrors ss = Alex $ \ st -> Right ( st{ alex_ust = (alex_ust ust){lexerErrors = ss}} , ())
+setLexerErrors ss = Alex $ \ st -> Right ( st{ alex_ust = (alex_ust st){lexerErrors = ss}} , ())
 
 
 --  lexerTokens:
@@ -200,7 +200,7 @@ getLexerTokens :: Alex [TokPos]
 getLexerTokens = Alex $ \ st@AlexState {alex_ust = ust} -> Right (st, lexerTokens ust)
 
 setLexerTokens :: [TokPos] -> Alex ()
-setLexerTokens ts = Alex $ \ st -> Right ( st{ alex_ust = (alex_ust ust){lexerTokens = ts}} , ())
+setLexerTokens ts = Alex $ \ st -> Right ( st{ alex_ust = (alex_ust st){lexerTokens = ts}} , ())
 
 --   Store tokens:
 storeToken :: Token -> AlexInput -> Int -> Alex TokPos
@@ -220,6 +220,6 @@ storeTokenError (AlexPn _ r c, _, _, s) _ = do
                 "       Undefined token: " ++ s 
     errors <- getLexerErrors
     _      <- setLexerErrors (error:errors)
-    return Tkundefined s
+    return $ (TkUndef s,r,c)
 
 }
