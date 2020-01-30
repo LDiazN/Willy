@@ -1,1 +1,4 @@
-(2)
+begin-world mimundo
+        World 1 id
+                                blue
+end work

@@ -155,7 +155,7 @@ tokens :-
 
 
 
-    .                             {storeTokenError}
+    .                                 {storeTokenError}
 
 
 
@@ -197,5 +197,98 @@ tokenizer inpt = do
                 return (token : tokens)
     
     runAlex inpt loop 
+-- Printing functions and token processing:
 
+-- displayTokens
+-- param: 
+--  toks: A list of tokens given by the tokenizer function
+-- Return:
+--  A string with the description of the given program tokens
+displayTokens :: [TokPos] -> String
+displayTokens toks = 
+    let errs = filterErrors toks    -- The errors in the tokens
+        closingBraces =             -- This int is used to tell if all the long comments are closed
+            foldl (\ count rem -> case rem of
+                                    (TkCommOpen,_,_)  -> count + 1
+                                    (TkCommClose,_,_) -> count - 1
+                                    a                 -> count
+            ) 0 toks
+        lines = reverse $ lineOrder toks      -- tokens arranged by lines
+        
+    in
+    if null errs  && closingBraces == 0 then
+        foldl (\ s l -> s ++ printLine l)  "" lines  
+    else
+        displayErrors errs closingBraces
+        
+
+-- displayErrors:
+--  Try to show an error message for each undefined token in the given input
+--  Param:
+--      toks: undefined token list
+--      closed: number of unclosed comments
+--  Return:
+--      A string with each error mssg
+displayErrors :: [TokPos] -> Int -> String
+displayErrors toks closed = foldl ( \ s t -> errorLog t ++ s) "" toks ++ 
+                            if closed /= 0 then "Willy* Lexer Error: Unexpected EOF inside of comment\n" 
+                            else ""
+                            
+
+-- filterErrors:
+--Param: 
+--  toks: list of tokpos with general tokens
+--Return :
+--  A list of token errors only
+filterErrors :: [TokPos] -> [TokPos] 
+filterErrors toks = foldl (\ l t -> 
+    case t of
+        err@(TkUndef s,_,_) -> (err:l)
+        (_,_,_)             -> l
+    )
+    [] toks
+
+-- Remove all aux tokens from a list of tokens
+cleanTokens :: [TokPos] -> [TokPos]
+cleanTokens toks = filter (\ tk -> case tk of 
+                        (TkEndl, _, _)    -> False
+                        (TkCommOpen, _, _)    -> False
+                        (TkCommClose, _, _)    -> False
+                        (TkInLineComm, _, _)    -> False
+                        (TkEOF, _, _)     -> False
+                        (TkUndef _, _, _) -> False
+                        (_, _, _)         -> True
+    ) toks
+
+
+-- Generates a formated string from a list of tokens
+printLine :: [TokPos] -> String
+printLine (t@(_, _, c):xs) = [' ' | i <- [1..c-1] ] ++ showTokPos t ++  foldr ( \ t s -> showTokPos t ++ s) "" xs
+-- From a list of tokens, returns a list of list of tokens, which represents
+-- the tokens in each line of the input file
+lineOrder :: [TokPos] -> [[TokPos]]
+lineOrder toks = map reverse $ foldl aux [[]] toks
+
+-- Aux function to help ordering the tokens 
+aux :: [[TokPos]] -> TokPos -> [[TokPos]]
+aux [[]] t@(TkEndl, _, _) = [[],[t]]
+aux [[]] t = [[t]]
+aux (x:xs) t = case t of
+                endl@(TkEndl, _, _) -> ([]:(t:x):xs)
+                tok@(_,_,_)         -> ((tok:x):xs)
+
+-- Retuns a string showing a TokPos object
+showTokPos :: TokPos -> String
+showTokPos (TkEndl,_,_) = "\n"
+showTokPos (TkCommClose,_,_) = ""
+showTokPos (TkCommOpen,_,_) = ""
+showTokPos (TkInLineComm,_,_) = ""
+showTokPos (TkEOF,_,_) = ""
+showTokPos (tok, r, c)  = "[" ++ show tok ++ ", " ++ "l: " ++ show r ++ ", c: " ++ show c ++ "]"
+
+-- errorLog: takes an undefined token and returns an error log string
+errorLog :: TokPos -> String
+errorLog (TkUndef s, l, c) = "Willy* Lexer Error: Undefined token \"" ++ s ++ "\" \n                    at Line: "
+                            ++ show l ++ ", Column: " ++ show c ++ "\n"
+errorLog _ = ""
 }
