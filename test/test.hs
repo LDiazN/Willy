@@ -40,17 +40,24 @@ displayTokens toks =
         
     in
     if null errs  && closingBraces == 0 then
-
-
         foldl (\ s l -> s ++ printLine l)  "" lines  
     else
-        "Printing errors"
+        displayErrors errs closingBraces
         
 
+-- displayErrors:
+--  Try to show an error message for each undefined token in the given input
+--  Param:
+--      toks: undefined token list
+--      closed: number of unclosed comments
+--  Return:
+--      A string with each error mssg
+displayErrors :: [TokPos] -> Int -> String
+displayErrors toks closed = foldl ( \ s t -> errorLog t ++ s) "" toks ++ 
+                            if closed /= 0 then "Willy* Lexer Error: Unexpected EOF inside of comment\n" 
+                            else ""
+                            
 
-    
-
---printTokens :: [TokPos] -> String
 
 --Param: 
 --  toks: list of tokpos with general tokens
@@ -84,7 +91,17 @@ aux (x:xs) t = case t of
 -- Retuns a string showing a TokPos object
 showTokPos :: TokPos -> String
 showTokPos (TkEndl,_,_) = "\n"
+showTokPos (TkCommClose,_,_) = ""
+showTokPos (TkCommOpen,_,_) = ""
+showTokPos (TkInLineComm,_,_) = ""
 showTokPos (tok, r, c)  = "[" ++ show tok ++ ", " ++ "r: " ++ show r ++ ", c: " ++ show c ++ "]"
+
+-- errorLog: takes an undefined token and returns an error log string
+errorLog :: TokPos -> String
+errorLog (TkUndef s, l, c) = "Willy* Lexer Error: Undefined token \"" ++ s ++ "\" \n                    at Line: "
+                            ++ show l ++ ", Column: " ++ show c ++ "\n"
+errorLog _ = ""
+-- Error log
 --tokenizer inpt = 
 --  --tokenizer content:
 --  let loop = do

@@ -11,7 +11,7 @@ import Tokens
 
 $alpha = [a-zA-z]
 $num = [0-9]
-$alphaNum = [a-zA-z0-9]
+$alphaNum = [a-zA-Z0-9]
 $anything = ~$white
 $white = [\ \t\n\f\v\r]
 
@@ -136,22 +136,21 @@ tokens :-
 
     <0> \-\- ~[]* \n                {storeToken TkInLineComm}
 
-    --<0> \{\{ ( ($notCurly)* | \}($notCurly)+ ) \}\}  {storeToken TkLongComm}
-
-    <0> \{\{                         { storeToken TkCommOpen `andBegin` commSt }
-    <0> \}\}                         { storeTokenError }
-    <commSt> \n                      { storeToken TkEndl}
-    <commSt> \}\}                    { storeToken TkCommClose `andBegin` initSt }
-    <commSt> \{\{                    { storeTokenError }
-    <commSt> $white                  { skip }
-    <commSt> .                       { skip }
+    <0> \{\{                        { storeToken TkCommOpen `andBegin` commSt }
+    <0> \}\}                        { storeTokenError }
+    <commSt> \n                     { storeToken TkEndl}
+    <commSt> \}\}                   { storeToken TkCommClose `andBegin` initSt }
+    <commSt> \{\{                   { storeTokenError }
+    <commSt> $white                 { skip }
+    <commSt> .                      { skip }
 
     
     
 
-    <0> [$num # $white]+                        {storeTokenInt} --numeric
+    <0> [$num # $white]+             {storeTokenInt} --numeric
     
-    [$alpha\_][$alphaNum\_]*    {storeTokenId}
+    <0> $num+ $alphaNum+            { storeTokenError }
+    <0> [$alpha\_][$alphaNum\_]*     {storeTokenId}
 
 
 
@@ -182,7 +181,7 @@ storeTokenInt :: AlexInput -> Int -> Alex TokPos
 storeTokenInt (AlexPn _ r c, _, _, s) l = return $ (TkInt $ read $ take l s, r,c)
 
 storeTokenId :: AlexInput -> Int -> Alex TokPos
-storeTokenId (AlexPn _ r c, _, _, s) _ = return (TkId s ,r,c)
+storeTokenId (AlexPn _ r c, _, _, s) l = return (TkId $ take l s ,r,c)
 
 -- Tokenizer:   returns either a list of token or an error message from a string program
 
