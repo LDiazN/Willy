@@ -1,4 +1,17 @@
 begin-world mimundo
-        World 1 id
-                                blue
-end-task
+
+    World 100 100;
+    Wall south from 0 10 to 0 4;
+    Wall south from 0 10 to 0 4;
+    Object-type bola of color cyan;
+    Object-type avion of color yellow;
+    Place 10 of bola at 10 10;
+    Place 5 of bola in basket;
+    Start at 0 0 heading north;
+    Basket of capacity 100;
+    Boolean soybool with initial value true;
+    Goal win is willy is at 0 0;
+    Goal win is 10 bolas objects in Basket;
+    Goal win is 10 bolas objects at 10 10;
+    
+end-world
