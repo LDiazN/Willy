@@ -1,4 +1,5 @@
 import Lexer
+import Parser
 import System.IO
 import System.Environment
 import Tokens
@@ -9,6 +10,6 @@ main = do
     content <- readFile filename  
     case tokenizer content of
         Right tks ->
-            putStrLn $ displayTokens tks
+            print $ parse $ cleanTokens tks
         Left s ->
             putStrLn s

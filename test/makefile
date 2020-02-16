@@ -1,12 +1,13 @@
 
 
-all: lexer test
 
 
-#Compila el Lexer con Alex
-lexer: lexer.x
-	alex lexer.x -o Lexer.hs -g
 
-#Compila test
-test: test.hs
-	ghc --make -dynamic test.hs
+all: Lexer
+	ghc --make Willy.hs 
+
+Lexer:
+	alex Lexer.x -o Lexer.hs -g
+
+clear:
+	rm *.hi *o Lexer.hs

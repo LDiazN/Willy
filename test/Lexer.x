@@ -133,6 +133,7 @@ tokens :-
 
     <0> \(                          {storeToken TkParOpen}
     <0> \)                          {storeToken TkParClose}
+    <0> \;                          {storeToken TkSemiColon}
 
     <0> \-\- ~[]* \n                {storeToken TkInLineComm}
 

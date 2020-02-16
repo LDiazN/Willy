@@ -102,7 +102,8 @@ data Token =
 
     TkFound                         |
     TkParOpen                       |    
-    TkParClose                      |    
+    TkParClose                      |  
+    TkSemiColon                     |  
     TkCarrying                      |
     TkInLineComm                    |
     TkLongComm                      |    
@@ -117,7 +118,6 @@ data Token =
     TkEndl                          |
 
     TkUndef                 String 
-
 
     deriving (Eq)
 
@@ -222,13 +222,14 @@ instance Show Token where
     show TkFound                  = "TkFound"
     show TkParOpen                = "TkParOpen"
     show TkParClose               = "TkParClose"
+    show TkSemiColon              = "TkSemiColon"
     show TkCarrying               = "TkCarrying"
     show TkInLineComm             = "TkInLineComm"
     show TkLongComm               = "TkLongComm"
-    show TkEndl                   = "TkEndl";
+    show TkEndl                   = "TkEndl"
     show TkCommOpen               = "TkCommOpen"
     show TkCommClose              = "TkCommClose"
-    show (TkEOF)                  = "TkEOF"
+    show TkEOF                    = "TkEOF"
 
     show (TkUndef s)              = "TkUndef: " ++ s
 
@@ -236,3 +237,16 @@ instance Show Token where
 
     show (TkId s)               = "TkId " ++ show s
 
+--  Aux functions:
+    --Get the token from a tokpos
+tok :: TokPos -> Token
+tok (t, _, _) = t
+
+    --Get the position from a tokpos
+pos :: TokPos -> (Int, Int)
+pos (_, r, c) = (r, c)
+
+    -- Get the int from a TkInt
+getInt :: Token -> Int
+getInt (TkInt i) = i
+getInt _ = -1
