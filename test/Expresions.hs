@@ -16,7 +16,7 @@ data WorldStmnt = Wall{direction :: TokPos, from :: (TokPos, TokPos), to :: (Tok
                 | BasketCapacity{ capacity :: TokPos }
                 | BooleanVar{ boolName :: TokPos, boolVal :: TokPos}
                 | Goal{ goalName :: TokPos, goalTest :: GoalTest }
-
+                | FGoal{ finalGoal :: FinalGoal }
                 deriving(Show)
 
 data GoalTest = WillyAt{ willyAtPos :: (TokPos, TokPos) }   
@@ -24,3 +24,9 @@ data GoalTest = WillyAt{ willyAtPos :: (TokPos, TokPos) }
               | WillyObjectsAt{ objIdAt :: TokPos, objAmountAt :: TokPos, objsPos :: (TokPos, TokPos) }
 
               deriving(Show)
+
+data FinalGoal = Constant{ consVal :: TokPos } --A Tkid or a constant boolean
+               | NotFinal{ notFinalVal :: FinalGoal }
+               | Operation{ operator :: TokPos, operand1 :: FinalGoal, operan2 :: FinalGoal }
+               | ParenthesisExp{ parenthContent :: FinalGoal }
+               deriving(Show)

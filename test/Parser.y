@@ -10,6 +10,10 @@ import Expresions
 %tokentype { TokPos }
 %error { parseError }
 
+-- Precedence directives
+%left or
+%left and 
+
 
 -- Possible tokens:
 %token
@@ -45,9 +49,11 @@ import Expresions
     initial                 { (TkInitial, _, _) }
     value                   { (TkValue, _, _) }
     Goal                    { (TkGoalIs, _, _) }
+    goal                    { (TkGoal, _, _) }
     is                      { (TkIs, _, _) }
     willy                   { (TkWilly, _, _) }
     objects                 { (TkObjects, _, _) }
+    Final                   { (TkFinal, _, _) }
 
     -- Constants --
     red                     { (TkColorRed, _, _) }                      
@@ -63,7 +69,13 @@ import Expresions
 
     -- Special Symbols --
     ';'                     { (TkSemiColon, _, _) }
+    '('                     { (TkParOpen, _, _) }
+    ')'                     { (TkParClose, _, _) }
 
+    -- Operators --
+    and                     { (TkAnd, _, _) } 
+    or                      { (TkOr, _, _) }
+    not                     { (TkNot, _, _) }
 
     --------------------------
     -- Program Instructions --
@@ -96,13 +108,23 @@ import Expresions
     world_stmt  : Wall direction from pos to pos              { Wall $2 $4 $6 }
                 | World int int                               { WorldSize $2 $3 }
                 | ObjectType name of color colorVal           { ObjectType $2 $5 }
-                | Place int of name at int int                { PlaceAt $4 $2 ($6, $7) }
+                | Place int of name at pos                    { PlaceAt $4 $2 $6 }
                 | Place int of name in basket                 { PlaceIn $4 $2 }
-                | Start at int int heading direction          { StartAt ($3, $4) $5 }
+                | Start at pos heading direction              { StartAt $3 $4 }
                 | Basket of capacity int                      { BasketCapacity $4 }
                 | Boolean name with initial value boolVal     { BooleanVar $2 $6}
                 | Goal name is goalTest                       { Goal $2 $4 }
-    
+                | Final goal is finalGoal                     { FGoal $4 }
+
+    finalGoal   :: {FinalGoal}                                
+    finalGoal   : true                                        { Constant $1 }
+                | false                                       { Constant $1 }
+                | name                                        { Constant $1 }
+                | finalGoal oper finalGoal                    { Operation $2 $1 $3 }
+                | not finalGoal                               { NotFinal $2 }
+                | '(' finalGoal ')'                           { ParenthesisExp $2 }
+                 
+
     goalTest    :: { GoalTest }
     goalTest    : willy is at pos                             { WillyAt $4 }
                 | int name objects in Basket                  { WillyBasketObjs $2 $1 }
@@ -126,11 +148,16 @@ import Expresions
                 | yellow                                      { $1 }     
 
     boolVal     :: { TokPos }                                 
-    boolVal     : true                                         { $1 } 
-                | false                                        { $1 } 
+    boolVal     : true                                        { $1 } 
+                | false                                       { $1 } 
 
     pos         :: { (TokPos, TokPos) }
     pos         : int int                                     { ($1, $2) }
+
+    -- Operators --
+    oper        :: {TokPos}
+    oper        : and                                                 { $1 }
+                | or                                                  { $1 }
 
 ------------------
 -- Haskell code --
