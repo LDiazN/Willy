@@ -12,8 +12,8 @@ import Expresions
 
 -- Precedence directives
 %left or
-%left and 
-
+%left and
+%left not
 
 -- Possible tokens:
 %token
@@ -120,7 +120,8 @@ import Expresions
     finalGoal   : true                                        { Constant $1 }
                 | false                                       { Constant $1 }
                 | name                                        { Constant $1 }
-                | finalGoal oper finalGoal                    { Operation $2 $1 $3 }
+                | finalGoal and finalGoal                     { Operation $2 $1 $3 }
+                | finalGoal or finalGoal                      { Operation $2 $1 $3 }
                 | not finalGoal                               { NotFinal $2 }
                 | '(' finalGoal ')'                           { ParenthesisExp $2 }
                  
@@ -154,11 +155,7 @@ import Expresions
     pos         :: { (TokPos, TokPos) }
     pos         : int int                                     { ($1, $2) }
 
-    -- Operators --
-    oper        :: {TokPos}
-    oper        : and                                                 { $1 }
-                | or                                                  { $1 }
-
+    
 ------------------
 -- Haskell code --
 ------------------
