@@ -2,8 +2,7 @@ module Expresions where
 import Tokens
 
 data ProgPart = World{ worldName :: TokPos, properties :: [WorldStmnt]}     
-              | Task                                                
-              | NoProg
+              | Task { workingWorld :: TokPos, instructions :: [TaskStmnt] }                                                
               deriving(Show)
 
 
@@ -16,8 +15,19 @@ data WorldStmnt = Wall{direction :: TokPos, from :: (TokPos, TokPos), to :: (Tok
                 | BasketCapacity{ capacity :: TokPos }
                 | BooleanVar{ boolName :: TokPos, boolVal :: TokPos}
                 | Goal{ goalName :: TokPos, goalTest :: GoalTest }
-                | FGoal{ finalGoal :: FinalGoal }
+                | FGoal{ finalGoal :: BoolExpr }
+
                 deriving(Show)
+                
+data TaskStmnt = IfCondition{ ifCondition :: BoolExpr, succInstruction :: TaskStmnt, failInstruction :: TaskStmnt }
+               | Move { tokenMove :: TokPos }
+               | Repeat { repeatTimes :: TokPos, repInstruction :: TaskStmnt }
+               | WhileCond { whileCondition :: BoolExpr, whileIntruct :: TaskStmnt }
+               | BeginEnd  { beginPos :: TokPos, beginIntructs :: [TaskStmnt] }
+               | DefineFunc { funcName :: TokPos, funcInstruct :: TaskStmnt }
+               | Skip
+                deriving(Show)
+
 
 data GoalTest = WillyAt{ willyAtPos :: (TokPos, TokPos) }   
               | WillyBasketObjs{ objIdBask :: TokPos, objAmountInBask :: TokPos }
@@ -25,8 +35,9 @@ data GoalTest = WillyAt{ willyAtPos :: (TokPos, TokPos) }
 
               deriving(Show)
 
-data FinalGoal = Constant{ consVal :: TokPos } --A Tkid or a constant boolean
-               | NotFinal{ notFinalVal :: FinalGoal }
-               | Operation{ operator :: TokPos, operand1 :: FinalGoal, operan2 :: FinalGoal }
-               | ParenthesisExp{ parenthContent :: FinalGoal }
-               deriving(Show)
+data BoolExpr = Constant{ consVal :: TokPos } --A Tkid or a constant boolean  
+              | Query { queryType :: TokPos, targetName :: TokPos } --query type is a TokPos TkFound or TkCarrying, target is a Tkid
+              | NotExpr{ notExpr :: BoolExpr }
+              | Operation{ operator :: TokPos, operand1 :: BoolExpr, operan2 :: BoolExpr }
+
+              deriving(Show)

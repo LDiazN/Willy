@@ -55,6 +55,52 @@ import Expresions
     objects                 { (TkObjects, _, _) }
     Final                   { (TkFinal, _, _) }
 
+
+    --------------------------
+    -- Program Instructions --
+    --------------------------
+
+    -- Keywords --
+    beginTask               { (TkBeginTask, _, _) }
+    endTask                 { (TkEndTask, _, _) }
+    on                      { (TkOn, _, _) }
+    terminate               { (TkTerminate, _, _) }
+    if                      { (TkIf, _, _) }    
+    then                    { (TkThen, _, _) }
+    else                    { (TkElse, _, _) }
+    repeat                  { (TkRepeat, _, _) }
+    times                   { (TkTimes, _, _) }
+    while                   { (TkWhile, _, _) }
+    do                      { (TkDo, _, _) }
+    define                  { (TkDefine, _, _) }
+    as                      { (TkAs, _, _) }
+    begin                   { (TkBegin, _, _) }
+    end                     { (TkEnd, _, _) }
+    -- Primitive instructions --
+    move                    { (TkMove, _ , _) }
+    turnLeft                { (TkTurnLeft, _, _) }
+    turnRight               { (TkTurnRight, _, _) }
+    pick                    { (TkPick, _, _) }
+    drop                    { (TkDrop, _, _) }
+    set                     { (TkSet, _, _) }
+    clear                   { (TkClear, _, _) }
+    flip                    { (TkFlip, _, _) }
+    frontClear              { (TkFrontClear, _, _) }
+    leftClear               { (TkLeftClear, _, _) }
+    rightClear              { (TkRightClear, _, _) }
+    lookingNorth            { (TkLookingNorth, _, _) }                  
+    lookingEast             { (TkLookingEast, _, _) }                   
+    lookingSouth            { (TkLookingSouth, _, _) }                  
+    lookingWest             { (TkLookingWest, _, _) }                   
+    found                   { (TkFound, _, _) }
+    carrying                { (TkCarrying, _, _) }
+
+
+
+    --------------------------
+    ------- Generics ---------
+    --------------------------
+
     -- Constants --
     red                     { (TkColorRed, _, _) }                      
     blue                    { (TkColorBlue, _, _) }                     
@@ -76,10 +122,6 @@ import Expresions
     and                     { (TkAnd, _, _) } 
     or                      { (TkOr, _, _) }
     not                     { (TkNot, _, _) }
-
-    --------------------------
-    -- Program Instructions --
-    --------------------------
 %%
 
 -----------------------
@@ -95,6 +137,8 @@ import Expresions
     prog_part   :: { ProgPart }
     prog_part   : beginworld name world_stmts endworld        { World $2 $3 }
                 | beginworld name endworld                    { World $2 [] }
+                | beginTask on name task_stmts endTask        { Task $3 $4 }
+                | beginTask on name endTask                   { Task $3 [] }
 
 
     -- World Creation statements --
@@ -114,25 +158,62 @@ import Expresions
                 | Basket of capacity int                      { BasketCapacity $4 }
                 | Boolean name with initial value boolVal     { BooleanVar $2 $6}
                 | Goal name is goalTest                       { Goal $2 $4 }
-                | Final goal is finalGoal                     { FGoal $4 }
+                | Final goal is boolExpr                      { FGoal $4 }
 
-    finalGoal   :: {FinalGoal}                                
-    finalGoal   : true                                        { Constant $1 }
-                | false                                       { Constant $1 }
-                | name                                        { Constant $1 }
-                | finalGoal and finalGoal                     { Operation $2 $1 $3 }
-                | finalGoal or finalGoal                      { Operation $2 $1 $3 }
-                | not finalGoal                               { NotFinal $2 }
-                | '(' finalGoal ')'                           { ParenthesisExp $2 }
-                 
 
     goalTest    :: { GoalTest }
     goalTest    : willy is at pos                             { WillyAt $4 }
                 | int name objects in Basket                  { WillyBasketObjs $2 $1 }
                 | int name objects at pos                     { WillyObjectsAt $2 $1 $5 }
 
+    -- Task Creation Statements --
+    
+    task_stmts  :: { [TaskStmnt] }
+    task_stmts  : task_stmts ';' task_stmt                    { $3:$1 }
+                | task_stmts ';'                              { $1 } 
+                | task_stmt                                   { [$1] }
+
+    task_stmt   :: { TaskStmnt }
+                -- Control --
+    task_stmt   : if boolExpr then task_stmt ';'              { IfCondition $2 $4 Skip }
+                | if boolExpr then task_stmt else task_stmt ';'  { IfCondition $2 $4 $6 }
+                | repeat int times task_stmt ';'              { Repeat $2 $4 }
+                | while boolExpr do task_stmt ';'             { WhileCond $2 $4 }
+                | begin end                                   { BeginEnd $1 [] }
+                | begin task_stmts end                        { BeginEnd $1 $2 }
+                | define name as task_stmt ';'                { DefineFunc $2 $4 }
+
+                -- Primitive instructions --
+                | move                                        { Move $1 }
+
+
+    query       :: { TokPos }
+    query       : found                                       { $1 }
+                | carrying                                    { $1 } 
+
+    -- Expresions --
+
+    boolExpr    :: {BoolExpr}                                
+    boolExpr    : true                                        { Constant $1 }
+                | false                                       { Constant $1 }
+                | name                                        { Constant $1 }
+                | frontClear                                  { Constant $1 }
+                | rightClear                                  { Constant $1 }
+                | leftClear                                   { Constant $1 }
+                | lookingNorth                                { Constant $1 }
+                | lookingSouth                                { Constant $1 }
+                | lookingEast                                 { Constant $1 }
+                | lookingWest                                 { Constant $1 }
+                | query '(' name ')'                          { Query $1 $3 }
+                | boolExpr and boolExpr                       { Operation $2 $1 $3 }
+                | boolExpr or boolExpr                        { Operation $2 $1 $3 }
+                | not boolExpr                                { NotExpr $2 }
+                | '(' boolExpr ')'                            { $2 }
+
 
     -- Constants --
+
+
 
     direction   :: { TokPos }
     direction   : north                                       { $1 }
@@ -155,6 +236,7 @@ import Expresions
     pos         :: { (TokPos, TokPos) }
     pos         : int int                                     { ($1, $2) }
 
+
     
 ------------------
 -- Haskell code --
@@ -163,5 +245,5 @@ import Expresions
     -- < Required by happy > --
 parseError :: [TokPos] -> a
 parseError (e:es) = error $ "Unexpected token: " ++ show (tok e)  ++ "\n At line: "  ++ show ( fst (pos e) )  ++ ", Column: "  ++ show ( snd (pos e) )
-parseError []     = error "Unknown Error"
+parseError []     = error "Unexpected EOF"
 }
