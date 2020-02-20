@@ -135,9 +135,9 @@ import Expresions
                 | willy_prog prog_part                        { $2 : $1 }
 
     prog_part   :: { ProgPart }
-    prog_part   : beginworld name world_stmts endworld        { World $2 $3 }
+    prog_part   : beginworld name world_stmts endworld        { World $2 $ reverse $3 }
                 | beginworld name endworld                    { World $2 [] }
-                | beginTask on name task_stmts endTask        { Task $3 $4 }
+                | beginTask name on name task_stmts endTask   { Task $2 $4  $ reverse $5 }
                 | beginTask on name endTask                   { Task $3 [] }
 
 
@@ -180,11 +180,19 @@ import Expresions
                 | repeat int times task_stmt ';'              { Repeat $2 $4 }
                 | while boolExpr do task_stmt ';'             { WhileCond $2 $4 }
                 | begin end                                   { BeginEnd $1 [] }
-                | begin task_stmts end                        { BeginEnd $1 $2 }
+                | begin task_stmts end                        { BeginEnd $1 $ reverse $2 }
                 | define name as task_stmt ';'                { DefineFunc $2 $4 }
-
                 -- Primitive instructions --
                 | move                                        { Move $1 }
+                | turnLeft                                    { TurnLeft $1 }
+                | turnRight                                   { TurnRight $1 }
+                | pick name                                   { Pick $2 }
+                | drop name                                   { Drop $2 }
+                | set name                                    { SetOper $2 (TkTrue, 0, 0) }
+                | set name to boolVal                         { SetOper $2 $4 }
+                | clear name                                  { ClearOper $1 $2 }
+                | flip name                                   { FlipOper $1 $2 }                    
+                | terminate                                   { Terminate $ pos $1 }
 
 
     query       :: { TokPos }
@@ -246,4 +254,9 @@ import Expresions
 parseError :: [TokPos] -> a
 parseError (e:es) = error $ "Unexpected token: " ++ show (tok e)  ++ "\n At line: "  ++ show ( fst (pos e) )  ++ ", Column: "  ++ show ( snd (pos e) )
 parseError []     = error "Unexpected EOF"
+
+    -- < Parser functions > --
+
+parseClean :: [TokPos] -> [ProgPart]
+parseClean = reverse . parse
 }

@@ -2,7 +2,7 @@ module Expresions where
 import Tokens
 
 data ProgPart = World{ worldName :: TokPos, properties :: [WorldStmnt]}     
-              | Task { workingWorld :: TokPos, instructions :: [TaskStmnt] }                                                
+              | Task { taskName :: TokPos,workingWorld :: TokPos, instructions :: [TaskStmnt] }                                                
               deriving(Show)
 
 
@@ -25,6 +25,14 @@ data TaskStmnt = IfCondition{ ifCondition :: BoolExpr, succInstruction :: TaskSt
                | WhileCond { whileCondition :: BoolExpr, whileIntruct :: TaskStmnt }
                | BeginEnd  { beginPos :: TokPos, beginIntructs :: [TaskStmnt] }
                | DefineFunc { funcName :: TokPos, funcInstruct :: TaskStmnt }
+               | TurnLeft { tokenTLeft :: TokPos }
+               | TurnRight { tokenTRight :: TokPos }
+               | Pick { pickObj :: TokPos }
+               | Drop { dropObj :: TokPos }
+               | SetOper {varToSet :: TokPos, boolVar :: TokPos}
+               | ClearOper {clearPos :: TokPos, varToClear :: TokPos}
+               | FlipOper { flipPos :: TokPos, varToFlip :: TokPos}
+               | Terminate { terminatePos :: (Int, Int)}
                | Skip
                 deriving(Show)
 

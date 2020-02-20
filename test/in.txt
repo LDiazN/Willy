@@ -6,29 +6,14 @@ end-world
 
 begin-task on mitask 
 
-    if true then move;;
-    repeat 10 times
-        if true then
-            while true do
-                begin
-                    move; 
-                    move; 
-                    move; 
-                end
-                ;
-            ;
-        ;
-    ;
-    
-    define wtf as 
-        begin 
-            move; 
-            move;
-            move;
-        end;
-    
-    ;
+    begin
+        move; 
+        turn-right; 
+        turn-left; 
+    end;
 
-    move;
+    repeat 10 times
+        move;
+    ;
 
 end-task
