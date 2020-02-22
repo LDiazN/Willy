@@ -137,8 +137,8 @@ import Expresions
     prog_part   :: { ProgPart }
     prog_part   : beginworld name world_stmts endworld        { World $2 $ reverse $3 }
                 | beginworld name endworld                    { World $2 [] }
-                | beginTask name on name task_stmts endTask   { Task $2 $4  $ reverse $5 }
-                | beginTask on name endTask                   { Task $3 [] }
+                | beginTask name on name task_stmts endTask   { Task $2 $4 $ reverse $5 }
+                | beginTask name on name endTask              { Task $2 $4 [] }
 
 
     -- World Creation statements --
@@ -176,7 +176,7 @@ import Expresions
     task_stmt   :: { TaskStmnt }
                 -- Control --
     task_stmt   : if boolExpr then task_stmt ';'              { IfCondition $2 $4 Skip }
-                | if boolExpr then task_stmt else task_stmt ';'  { IfCondition $2 $4 $6 }
+                | if boolExpr then task_stmt else task_stmt ';'{ IfCondition $2 $4 $6 }
                 | repeat int times task_stmt ';'              { Repeat $2 $4 }
                 | while boolExpr do task_stmt ';'             { WhileCond $2 $4 }
                 | begin end                                   { BeginEnd $1 [] }
@@ -193,6 +193,7 @@ import Expresions
                 | clear name                                  { ClearOper $1 $2 }
                 | flip name                                   { FlipOper $1 $2 }                    
                 | terminate                                   { Terminate $ pos $1 }
+                | name                                        { FuncCall $1 }
 
 
     query       :: { TokPos }
