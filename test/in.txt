@@ -4,16 +4,34 @@ begin-world mimundo
   
 end-world
 
-begin-task on mitask 
+begin-task mytask on mimundo
 
-    begin
-        move; 
-        turn-right; 
-        turn-left; 
-    end;
+    if true or false then 
+        begin 
+            move;
+            move;
+            move;
+        end
+    else
+        move;
+    ;
 
     repeat 10 times
         move;
     ;
+    begin 
+    
+        move; 
+        move;
+        move;
+    
+    end;
+    while true do
+        move;
+    ;
 
+end-task
+
+begin-task scdTask on mimundo
+    move;
 end-task

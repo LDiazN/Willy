@@ -159,8 +159,8 @@ instance Show Token where
     show TkCapacity               = "TkCapacity"
 
     show TkBoolean                = "TkBoolean"
-    show TkTrue                   = "TkTrue"
-    show TkFalse                  = "TkFalse"
+    show TkTrue                   = "true"
+    show TkFalse                  = "false"
     
     show TkWith                   = "TkWith"
     show TkInitial                = "TkInitial"
@@ -177,9 +177,9 @@ instance Show Token where
     show TkObjects                = "TkObjects"
     show TkWilly                  = "TkWilly"
 
-    show TkAnd                    = "TkAnd"
-    show TkOr                     = "TkOr"
-    show TkNot                    = "TkNot"
+    show TkAnd                    = "CONJUNCION"
+    show TkOr                     = "DISYUNCION"
+    show TkNot                    = "not"
 
     show TkBeginTask              = "TkBeginTask"
     show TkOn                     = "TkOn"
@@ -211,19 +211,19 @@ instance Show Token where
     show TkFlip                   = "TkFlip"
     show TkTerminate              = "TkTerminate"
 
-    show TkFrontClear             = "TkFrontClear"
-    show TkLeftClear              = "TkLeftClear"
-    show TkRightClear             = "TkRightClear"
-    show TkLookingNorth           = "TkLookingNorth"
-    show TkLookingEast            = "TkLookingEast"
-    show TkLookingSouth           = "TkLookingSouth"
-    show TkLookingWest            = "TkLookingWest"
+    show TkFrontClear             = "front-clear"
+    show TkLeftClear              = "left-clear"
+    show TkRightClear             = "right-clear"
+    show TkLookingNorth           = "looking-north"
+    show TkLookingEast            = "looking-east"
+    show TkLookingSouth           = "looking-south"
+    show TkLookingWest            = "looking-west"
+    show TkFound                  = "found"
 
-    show TkFound                  = "TkFound"
     show TkParOpen                = "TkParOpen"
     show TkParClose               = "TkParClose"
     show TkSemiColon              = "TkSemiColon"
-    show TkCarrying               = "TkCarrying"
+    show TkCarrying               = "carrying"
     show TkInLineComm             = "TkInLineComm"
     show TkLongComm               = "TkLongComm"
     show TkEndl                   = "TkEndl"
@@ -250,3 +250,8 @@ pos (_, r, c) = (r, c)
 getInt :: Token -> Int
 getInt (TkInt i) = i
 getInt _ = -1
+
+    -- Get the String from a tkId
+getId :: Token -> String
+getId (TkId s) = s
+getId _        = ""
