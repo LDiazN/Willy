@@ -28,7 +28,7 @@ analyzer ast = unless (null ast) $ do
 
             if null e
                 then io $ putStrLn "Everything ok"
-                else io (mapM_ (putStrLn . (++ "\n")) e >> return ())
+                else io (mapM_ (putStrLn . (++ "\n")) (reverse e) >> return ())
 
     where 
         processProgPart :: E.ProgPart -> RetState ()
@@ -47,6 +47,7 @@ analyzer ast = unless (null ast) $ do
                         -- Update state to world context:
                         st <- get
                         put st{ST.context = ST.WorldCon}
+
                         -- Create the world type
                         worldType@ST.World{ST.worldSize = ws, 
                                            ST.capacity = capc, 
@@ -74,7 +75,7 @@ analyzer ast = unless (null ast) $ do
                                             else worldType''
 
                         -- Add the new created  world
-                        try <- insertSymbol $ ST.Symbol id fWorldType 0 (T.pos name)
+                        insertSymbol $ ST.Symbol id fWorldType 0 (T.pos name)
                         return ()
 
                 Just _ -> do
@@ -91,9 +92,18 @@ analyzer ast = unless (null ast) $ do
             return ()
 
         processProgPart t@(E.Task name ww instrs) = do
-            return()
+            let id  = T.getId' name
+                
+            -- check if the world is a valid world
+            valid <- checkTypeExst ST.isWorld ww
 
-        
+            --  Process the current world
+            -- Update the context to task context
+            st  <- get
+            put st{ST.context = ST.TaskCon} 
+
+            return ()
+
         -- This function gets a world statement and a world symbol type and 
         -- try to add the given property to the world
         addWorldIntr :: ST.SymType -> E.WorldStmnt -> RetState ST.SymType
@@ -232,7 +242,15 @@ analyzer ast = unless (null ast) $ do
 
         addWorldIntr w _ = return w
 
+        --Check a Task Statement set 
+        checkInstructions :: [E.TaskStmnt] -> RetState ()
+        checkInstructions = mapM_ checkInstruction 
 
+        --Check a Task Statement for errors
+        checkInstruction :: E.TaskStmnt -> RetState ()
+        checkInstruction (E.FuncCall fname) = void (checkTypeExst ST.isDef fname)
+        
+        checkInstruction _ = return ()
         addWorldIntr' :: RetState ST.SymType -> E.WorldStmnt -> RetState ST.SymType     
         addWorldIntr' w stmnt = do
             w' <- w
@@ -309,12 +327,17 @@ insertSymbol sym@(ST.Symbol id stype _ p) = do
     -- Get the current state of the symbol table
     st@(ST.SymbolTable m stk nxt ctxt errs ) <- get
 
+    let 
+        currCont = head stk
     -- Check if the symbol already exists:
     exists <- findSymbol id
 
     case exists of
         -- The symbol is in the table in the current context
-        Just _  -> put st{ST.errors = show (ST.SymRedef sym):errs} >> return False
+        Just s@ST.Symbol{ST.symContext = scon} -> 
+            if scon == currCont
+                then put st{ST.errors = show (ST.SymRedef sym):errs} >> return False
+                else insertSymbol' sym{ST.symContext = head stk} >> return True
 
         Nothing -> do
                     check <- checkCtxt sym
@@ -323,6 +346,7 @@ insertSymbol sym@(ST.Symbol id stype _ p) = do
                         else insertSymbol' sym{ST.symContext = head stk} >> return True
 
     where 
+        
         -- This functions checks if the symbol can be inserted 
         -- in the current Program State (defining a world or a task)
         checkCtxt :: ST.Symbol -> RetState Bool
