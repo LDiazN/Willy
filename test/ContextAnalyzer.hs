@@ -131,7 +131,7 @@ analyzer ast = unless (null ast) $ do
                             then 1
                             else (T.getInt' . E.capacity . head) cap
                 -- Sum is the sum of all place-in-basket including the new one
-                sum'  = T.getInt' amnt + sum (map (T.getInt' . E.amountIn) cap)
+                sum'  = T.getInt' amnt + sum (map (T.getInt' . E.amountIn) plin)
 
             sym <- findSymbol (T.getId' otid)
             if isNothing sym 
@@ -160,6 +160,15 @@ analyzer ast = unless (null ast) $ do
                                     then (1,1)
                                     else ( T.getInt' . E.rows . head $ wsize, T.getInt' . E.rows . head $ wsize)
                     wallsOverWill = [isWillyOverWall (stmnt:stpos) (E.from i) (E.to i) | i <- walls]  
+
+        -- Basket of capacity checking:
+        addWorldIntr w@ST.World{ST.capacity = cap } stmnt@(E.BasketCapacity amnt) 
+            -- we have tu check:
+            --  1) Capacity must be a positive integer
+            --  2) No redefinition of capacity
+            | T.getInt' amnt <= 0 = addError (ST.NullBaskCapacity amnt)  >> return w
+            | not (null cap)      = addError (ST.RedefBaskCapacity amnt) >> return w
+            | otherwise           = return w{ST.capacity = stmnt:cap}
 
         addWorldIntr w _ = return w
 
