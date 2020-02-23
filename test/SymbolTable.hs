@@ -49,6 +49,9 @@ data Error = SymRedef{ redefinedSym :: Symbol }
            | RedefStartPos{ redefStPos :: T.TokPos}
            | StartPosOOB{ oobPos :: T.TokPos }
            | WillyOverWall{ wowPos :: T.TokPos }
+           | RedefBaskCapacity{ redefBskPos :: T.TokPos }
+           | NullBaskCapacity{ nullbskPos :: T.TokPos }
+           | RedefFGoal{ fgPos :: T.TokPos }
 
 instance Show Context where
     show NoCon = "Sin contexto"
@@ -122,6 +125,16 @@ instance Show Error where
 
     show (WillyOverWall pos) = "Willy Context Error: Willy posicionado sobre un muro." ++
                                "\nCerca de " ++ posToString (T.pos pos)
+
+    show (RedefBaskCapacity pos) = "Willy Context Error: Redefinicion de capacidad de la cesta." ++
+                                   "\nCerca de " ++ posToString (T.pos pos)
+
+    show (NullBaskCapacity pos)  = "Willy Context Error: Capacidad de la cesta inválida." ++
+                                   "\n    Tamaño dado: " ++ show (T.getInt' pos) ++
+                                   "\nCerca de " ++ posToString (T.pos pos)
+
+    show (RedefFGoal pos) = "Willy Context Error: Redefinición de objetivo final" ++
+                            "\nEn " ++ posToString (T.pos pos)
 
 posToString :: (Int, Int) -> String
 posToString pos = "linea: " ++ (show . fst ) pos ++ 

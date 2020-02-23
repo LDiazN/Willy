@@ -4,9 +4,9 @@ import Tokens
 type AST = [ProgPart]
 
 data ProgPart = World{ worldName :: TokPos, properties :: [WorldStmnt]}     
-              | Task { taskName :: TokPos, workingWorld :: TokPos, instructions :: [TaskStmnt] }                                                
-              deriving(Eq, Show)
+              | Task { taskName :: TokPos, workingWorld :: TokPos, instructions :: [TaskStmnt] } 
 
+              deriving(Eq, Show)
 
 data WorldStmnt = Wall{direction :: TokPos, from :: (TokPos, TokPos), to :: (TokPos, TokPos)}
                 | WorldSize{ rows :: TokPos, cols :: TokPos }
@@ -17,7 +17,7 @@ data WorldStmnt = Wall{direction :: TokPos, from :: (TokPos, TokPos), to :: (Tok
                 | BasketCapacity{ capacity :: TokPos }
                 | BooleanVar{ boolName :: TokPos, boolVal :: TokPos}
                 | Goal{ goalName :: TokPos, goalTest :: GoalTest }
-                | FGoal{ finalGoal :: BoolExpr }
+                | FGoal{ finalGoal :: BoolExpr, fGoalPos :: TokPos }
 
                 deriving(Eq, Show)
                 
@@ -37,9 +37,8 @@ data TaskStmnt = IfCondition{ ifCondition :: BoolExpr, succInstruction :: TaskSt
                | Terminate  { terminatePos :: (Int, Int)}
                | FuncCall   {funcId :: TokPos}
                | Skip
-               deriving (Eq)
-                
 
+               deriving (Eq)
 
 data GoalTest = WillyAt{ willyAtPos :: (TokPos, TokPos) }   
               | WillyBasketObjs{ objIdBask :: TokPos, objAmountInBask :: TokPos }
@@ -54,8 +53,6 @@ data BoolExpr = Constant{ consVal :: TokPos } --A Tkid or a constant boolean
 
               deriving(Eq)
 
-
-
 -- Show functions:
 instance Show BoolExpr where
     show (Constant tok) = case tok of
@@ -64,9 +61,6 @@ instance Show BoolExpr where
     show (Query qt tn ) = show (tok qt) ++ "(" ++ (getId . tok)  qt ++ ")"
     show (NotExpr ne)   = "not" ++ show ne
     show (Operation oper op1 op2) = show (tok oper) ++ ":\n  lado izquierdo: " ++ show op1 ++ "\n  lado derecho: " ++ show op2
-
-        
-        
 
 instance Show TaskStmnt where
     show (Move _) = "Move"

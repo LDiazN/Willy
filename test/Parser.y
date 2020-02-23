@@ -158,7 +158,7 @@ import Expresions
                 | Basket of capacity int                      { BasketCapacity $4 }
                 | Boolean name with initial value boolVal     { BooleanVar $2 $6}
                 | Goal name is goalTest                       { Goal $2 $4 }
-                | Final goal is boolExpr                      { FGoal $4 }
+                | Final goal is boolExpr                      { FGoal $4 $1}
 
 
     goalTest    :: { GoalTest }

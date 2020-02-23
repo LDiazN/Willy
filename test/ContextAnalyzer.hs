@@ -170,7 +170,30 @@ analyzer ast = unless (null ast) $ do
             | not (null cap)      = addError (ST.RedefBaskCapacity amnt) >> return w
             | otherwise           = return w{ST.capacity = stmnt:cap}
 
+        --Boolean definition Checking:
+        addWorldIntr w stmnt@(E.BooleanVar bname bval) = do
+            -- We have to check:
+            -- 1) Name is currently unavailable in the symbol table
+            -- The insertSymbol function adds the corresponding error if the symbol already exists
+            insertSymbol (ST.Symbol (T.getId' bname) (ST.BoolVar bval) 0 (T.pos bname))
+            return w
+
+        --Check goal defiition
+        addWorldIntr w stmnt@(E.Goal gname gtest) = do
+            -- We have to check:
+            -- 1) Name is currently unavailable in the symbol table
+            -- The insertSymbol function adds the corresponding error if the symbol already exists
+            insertSymbol (ST.Symbol (T.getId' gname) (ST.Goal gtest) 0 (T.pos gname))
+            return w
+
+        --Check final goal definition:
+        addWorldIntr w@ST.World{ST.finalGoal = fgoal} stmnt@(E.FGoal be fgpos) 
+            | not (null fgoal)  = addError (ST.RedefFGoal fgpos) >> return w
+            | otherwise = return w{ST.finalGoal = [stmnt]}
+            
+         
         addWorldIntr w _ = return w
+
 
         addWorldIntr' :: RetState ST.SymType -> E.WorldStmnt -> RetState ST.SymType     
         addWorldIntr' w stmnt = do
