@@ -58,7 +58,7 @@ analyzer ast = unless (null ast) $ do
                 Just _ -> do
                         -- When we try to insert a symbol that already exists, the insert
                         -- method will place an error on the error Stack
-                        insertSymbol $ ST.Symbol id (ST.emptyWorld) 0 (T.pos name) 
+                        insertSymbol $ ST.Symbol id ST.emptyWorld 0 (T.pos name) 
                         return ()
 
 
@@ -99,9 +99,9 @@ analyzer ast = unless (null ast) $ do
             return w
 
         -- PlaceAt checking
-        addWorldIntr w@(ST.World{ST.worldSize = wsize}) stmnt@(E.PlaceAt tkid amnt (px,py)) = do
+        addWorldIntr w@ST.World{ST.worldSize = wsize} stmnt@(E.PlaceAt tkid amnt (px,py)) = do
             -- Get the symbol being referenced
-            sym@(ST.Symbol id stype _ _) <- findSymbol $ T.getId' tkid
+            sym <- findSymbol $ T.getId' tkid
 
             --Check if the object it's within the world boundaries
             let wsize'     = if null wsize 
@@ -116,10 +116,10 @@ analyzer ast = unless (null ast) $ do
             --if the object is placed somewhere out of the world:
             if isNothing sym 
                 then addError (ST.UndefRef tkid) >> return w
-            else if not (ST.isObjType stype) 
+            else if let stype = (ST.symType . fromJust $ sym) in not (ST.isObjType stype) 
                 then addError (ST.InvalidObjType tkid) >> return w
             else if wsx < pxint || wsy < pyint
-                then addError (ST.PlaceOutOfBound (wsx, wsy) (pxint, pyint) (T.pos tkid)) >> return w
+                then addError (ST.PlaceOutOfBound (wsx, wsy) (pxint, pyint) tkid) >> return w
             else return w
             
 
