@@ -1,37 +1,11 @@
 begin-world mimundo
+    World 10 10;
+    Object-type bola of color red;
+    Object-type bola of color red;
 
+
+    Wall north from 1 1 to 1 2
     
   
 end-world
 
-begin-task mytask on mimundo
-
-    if true or false then 
-        begin 
-            move;
-            move;
-            move;
-        end
-    else
-        move;
-    ;
-
-    repeat 10 times
-        move;
-    ;
-    begin 
-    
-        move; 
-        move;
-        move;
-    
-    end;
-    while true do
-        move;
-    ;
-
-end-task
-
-begin-task scdTask on mimundo
-    move;
-end-task

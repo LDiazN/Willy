@@ -46,7 +46,7 @@ code = do
     put $ s{x = 10}
     s' <- getState
     io $ print s'
-    return ()O
+    return ()
 
 getS :: StateT S IO [Int]
 getS = do 

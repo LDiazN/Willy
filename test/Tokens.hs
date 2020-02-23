@@ -131,10 +131,10 @@ instance Show Token where
    
     show TkWall                   = "TkWall"
    
-    show TkNorth                  = "TkNorth"
-    show TkSouth                  = "TkSouth"
-    show TkEast                   = "TkEast"
-    show TkWest                   = "TkWest"
+    show TkNorth                  = "north"
+    show TkSouth                  = "south"
+    show TkEast                   = "east"
+    show TkWest                   = "west"
 
     show TkFrom                   = "TkFrom"
     show TkTo                     = "TkTo"
@@ -233,9 +233,9 @@ instance Show Token where
 
     show (TkUndef s)              = "TkUndef: " ++ s
 
-    show (TkInt i)              = "TkInt " ++ show i
+    show (TkInt i)              = show i
 
-    show (TkId s)               = "TkId " ++ show s
+    show (TkId s)               = show s
 
 --  Aux functions:
     --Get the token from a tokpos
@@ -251,7 +251,13 @@ getInt :: Token -> Int
 getInt (TkInt i) = i
 getInt _ = -1
 
+getInt' :: TokPos -> Int
+getInt' (tkint, _, _) = getInt tkint
+
     -- Get the String from a tkId
 getId :: Token -> String
 getId (TkId s) = s
 getId _        = ""
+
+getId' :: TokPos -> String
+getId' = getId . tok

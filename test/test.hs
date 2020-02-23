@@ -4,8 +4,9 @@ import System.IO
 import System.Environment
 import Tokens
 import Expresions
-
-
+import SymbolTable
+import ContextAnalyzer
+import qualified Data.Map as M
 main = do
     (filename:_) <- getArgs
 
@@ -13,11 +14,10 @@ main = do
 
     case tokenizer content of
         Right tks ->
-            print $ parseClean $ cleanTokens tks
+
+            analyzeAST . parseClean . cleanTokens $ tks
         Left s ->
             putStrLn s
 
 
-parseClean :: [TokPos] -> [ProgPart]
-parseClean = reverse . parse
     
