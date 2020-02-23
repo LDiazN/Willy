@@ -5,6 +5,7 @@ import Control.Monad
 import System.IO
 import System.Environment
 import Data.Maybe
+import Data.Typeable
 import qualified Expresions as E
 import qualified Tokens as T
 import qualified Data.Map as M
@@ -47,12 +48,33 @@ analyzer ast = unless (null ast) $ do
                         st <- get
                         put st{ST.context = ST.WorldCon}
                         -- Create the world type
-                        worldType <-  foldl addWorldIntr' (retStateWrap ST.emptyWorld) ppts
+                        worldType@ST.World{ST.worldSize = ws, 
+                                           ST.capacity = capc, 
+                                           ST.startPos = stpos} <-  foldl addWorldIntr' (retStateWrap ST.emptyWorld) ppts
                         -- Return to normal Sate
+
                         st <- get
                         put st{ST.context = ST.NoCon}
+                        -- Check the requirements of the world:
+                        -- 1) If no start position declaration, then add the default one (1,1, north)
+                        -- 2) If no basket capacity avalable, then add the default (capacity 1)
+                        -- 3) If no world size, then add the default (1,1)
+                        let 
+                            tkint1  = (T.TkInt 1, 0, 0)
+                            tknorth = (T.TkNorth, 0, 0)
+
+                            worldType' = if null ws 
+                                            then worldType{ ST.worldSize = [E.WorldSize tkint1 tkint1] }
+                                            else worldType
+                            worldType''= if null capc
+                                            then worldType'{ ST.capacity = [E.BasketCapacity tkint1] }
+                                            else worldType'
+                            fWorldType = if null stpos
+                                            then worldType''{ST.startPos = [E.StartAt (tkint1,tkint1) tknorth ]}
+                                            else worldType''
+
                         -- Add the new created  world
-                        try <- insertSymbol $ ST.Symbol id worldType 0 (T.pos name)
+                        try <- insertSymbol $ ST.Symbol id fWorldType 0 (T.pos name)
                         return ()
 
                 Just _ -> do
@@ -189,9 +211,25 @@ analyzer ast = unless (null ast) $ do
         --Check final goal definition:
         addWorldIntr w@ST.World{ST.finalGoal = fgoal} stmnt@(E.FGoal be fgpos) 
             | not (null fgoal)  = addError (ST.RedefFGoal fgpos) >> return w
-            | otherwise = return w{ST.finalGoal = [stmnt]}
-            
-         
+            | otherwise = do
+
+                mybools <- mapM (checkTypeExst isBool') (names be)
+                --io (print $ typeOf bools)
+
+                if and  mybools
+                    then return w{ST.finalGoal = [stmnt]} 
+                    else return w
+            where 
+                -- This function returns all the variable names in a bool expr
+                names :: E.BoolExpr -> [T.TokPos]
+                names (E.Constant t) = [t]
+                names E.Operation{E.operand1 = op1, E.operand2 = op2} = names op1 ++ names op2
+                names (E.NotExpr ne)  = names ne
+                names _ = []
+
+                isBool' :: ST.SymType -> Bool
+                isBool' s = ST.isBool s || ST.isGoal s
+
         addWorldIntr w _ = return w
 
 

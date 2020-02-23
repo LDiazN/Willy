@@ -21,12 +21,12 @@ data WorldStmnt = Wall{direction :: TokPos, from :: (TokPos, TokPos), to :: (Tok
 
                 deriving(Eq, Show)
                 
-data TaskStmnt = IfCondition{ ifCondition :: BoolExpr, succInstruction :: TaskStmnt, failInstruction :: TaskStmnt } --
+data TaskStmnt = IfCondition{ ifCondition :: BoolExpr, succInstruction :: TaskStmnt, failInstruction :: TaskStmnt } 
                | Move       { tokenMove :: TokPos }
-               | Repeat     { repeatTimes :: TokPos, repInstruction :: TaskStmnt }                                      --
-               | WhileCond  { whileCondition :: BoolExpr, whileIntruct :: TaskStmnt }                                --
-               | BeginEnd   { beginPos :: TokPos, beginIntructs :: [TaskStmnt] }                                     --
-               | DefineFunc { funcName :: TokPos, funcInstruct :: TaskStmnt }                                       --
+               | Repeat     { repeatTimes :: TokPos, repInstruction :: TaskStmnt }                                  
+               | WhileCond  { whileCondition :: BoolExpr, whileIntruct :: TaskStmnt }                              
+               | BeginEnd   { beginPos :: TokPos, beginIntructs :: [TaskStmnt] }                                    
+               | DefineFunc { funcName :: TokPos, funcInstruct :: TaskStmnt }                                       
                | TurnLeft   { tokenTLeft :: TokPos }
                | TurnRight  { tokenTRight :: TokPos }
                | Pick       { pickObj :: TokPos }
@@ -49,7 +49,7 @@ data GoalTest = WillyAt{ willyAtPos :: (TokPos, TokPos) }
 data BoolExpr = Constant{ consVal :: TokPos } --A Tkid or a constant boolean  
               | Query { queryType :: TokPos, targetName :: TokPos } --query type is a TokPos TkFound or TkCarrying, target is a Tkid
               | NotExpr{ notExpr :: BoolExpr }
-              | Operation{ operator :: TokPos, operand1 :: BoolExpr, operan2 :: BoolExpr }
+              | Operation{ operator :: TokPos, operand1 :: BoolExpr, operand2 :: BoolExpr }
 
               deriving(Eq)
 
