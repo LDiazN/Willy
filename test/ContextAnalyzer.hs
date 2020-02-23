@@ -76,7 +76,7 @@ analyzer ast = unless (null ast) $ do
         -- try to add the given property to the world
         addWorldIntr :: ST.SymType -> E.WorldStmnt -> RetState ST.SymType
         --For wall checking
-        addWorldIntr w@(ST.World wsize walls stpos capcty fgoal) stmnt@(E.Wall dir from to) 
+        addWorldIntr w@ST.World{ST.walls = walls, ST.startPos = stpos} stmnt@(E.Wall dir from to) 
             |  not (checkWallDir dir from to) = addError (ST.InconsisWallDir dir from to) >> return w
             |  isWillyOverWall stpos from to  = 
                 let stpos' = if null stpos 
@@ -87,7 +87,7 @@ analyzer ast = unless (null ast) $ do
             |  otherwise                      = return w{ST.walls = stmnt:walls}
 
         -- for WorldSize checking:
-        addWorldIntr w@(ST.World wsize walls stpos capcty fgoal) stmnt@(E.WorldSize rows cols) 
+        addWorldIntr w@ST.World {ST.worldSize = wsize} stmnt@(E.WorldSize rows cols) 
             | not (null wsize)       = addError (ST.RedefWSize rows)   >> return w
             | T.getInt' rows <= 0 && T.getInt' cols <= 0 = addError (ST.InvalidWSize rows cols) >> return w
             | otherwise  = return w{ST.worldSize = [stmnt]}
@@ -111,7 +111,6 @@ analyzer ast = unless (null ast) $ do
                 (wsx, wsy) = (T.getInt' $ E.rows wsize', T.getInt' $ E.cols wsize')
 
                 (pxint, pyint) = (T.getInt' px, T.getInt' py)
-
                 
             --if the object is placed somewhere out of the world:
             if isNothing sym 
@@ -121,8 +120,46 @@ analyzer ast = unless (null ast) $ do
             else if wsx < pxint || wsy < pyint
                 then addError (ST.PlaceOutOfBound (wsx, wsy) (pxint, pyint) tkid) >> return w
             else return w
-            
 
+        -- Place In checking 
+        addWorldIntr w@ST.World{ST.placeIn = plin, ST.capacity = cap} stmnt@(E.PlaceIn otid amnt) = do
+            -- 1) We have to tell if the symbol exists and if it's an ObjectType symbol
+            -- 2) We have to tell if the sum of the symbols is <= than capacity
+
+            let -- cap' is the capacity of the basket
+                cap' = if null cap
+                            then 1
+                            else (T.getInt' . E.capacity . head) cap
+                -- Sum is the sum of all place-in-basket including the new one
+                sum'  = T.getInt' amnt + sum (map (T.getInt' . E.amountIn) cap)
+
+            sym <- findSymbol (T.getId' otid)
+            if isNothing sym 
+                then addError (ST.UndefRef otid) >> return w 
+            else if let stype = (ST.symType . fromJust $ sym) in not (ST.isObjType stype) 
+                then addError (ST.InvalidObjType otid) >> return w
+            else if sum' > cap' 
+                then addError (ST.CapacityExceeded otid amnt amnt) >> return w
+            else if T.getInt' amnt <= 0
+                then addError (ST.PlaceZeroObj amnt) >> return w
+            else 
+                return w{ ST.placeIn = stmnt:plin}
+        
+        --StartAt checking:
+        addWorldIntr w@ST.World{ST.worldSize = wsize, ST.startPos = stpos, ST.walls = walls} stmnt@(E.StartAt (tkpx, tkpy) tkdir) 
+            -- We have to check: 
+            --  1) startPos must be empty 
+            --  2) given position must be between world boundaries
+            --  3) given position must be out of a wall
+            | not (null stpos) = addError (ST.RedefStartPos tkpx) >> return w
+            | T.getInt' tkpx > wsx || T.getInt' tkpy > wsy = addError (ST.StartPosOOB tkpx) >> return w
+            | or wallsOverWill = addError (ST.WillyOverWall tkpx) >> return w            
+            | otherwise = return w{ST.startPos = stmnt:stpos}
+
+            where   (wsx, wsy) = if null wsize 
+                                    then (1,1)
+                                    else ( T.getInt' . E.rows . head $ wsize, T.getInt' . E.rows . head $ wsize)
+                    wallsOverWill = [isWillyOverWall (stmnt:stpos) (E.from i) (E.to i) | i <- walls]  
 
         addWorldIntr w _ = return w
 
@@ -142,16 +179,19 @@ analyzer ast = unless (null ast) $ do
                                     ( T.tok dir == T.TkWest  && T.tok (snd from) == T.tok (snd to) &&
                                       T.getInt ( T.tok (fst from) ) >= T.getInt (T.tok (fst to) ))  
 
+        -- Returns true if willy the StartAt list contains a start position of willy where the given wall 
+        -- is over
         isWillyOverWall :: [E.WorldStmnt] -> (T.TokPos,T.TokPos) -> (T.TokPos,T.TokPos) -> Bool
-        isWillyOverWall [] _ _ = True
-        isWillyOverWall ((E.StartAt (x, y) _):xs) (fx,fy)  (tx,ty) = (T.tok x == T.tok fx && T.tok fx == T.tok tx &&
-                                                                            ( T.getInt' fy <= T.getInt' y &&  T.getInt' y <= T.getInt' ty ||
-                                                                            T.getInt' ty <= T.getInt' y &&  T.getInt' y <= T.getInt' fy)
-                                                                       ) ||
-                                                                       (T.tok y == T.tok fy && T.tok fy == T.tok ty &&
-                                                                            ( T.getInt' fx <= T.getInt' x &&  T.getInt' x <= T.getInt' tx ||
-                                                                            T.getInt' tx <= T.getInt' x &&  T.getInt' x <= T.getInt' fx)
-                                                                       )
+        isWillyOverWall [] _ _ = False
+        isWillyOverWall (E.StartAt (x, y) _ : xs) (fx,fy)  (tx,ty) = 
+                            (T.tok x == T.tok fx && T.tok fx == T.tok tx &&
+                                 ( T.getInt' fy <= T.getInt' y &&  T.getInt' y <= T.getInt' ty ||
+                                 T.getInt' ty <= T.getInt' y &&  T.getInt' y <= T.getInt' fy)
+                            ) ||
+                            (T.tok y == T.tok fy && T.tok fy == T.tok ty &&
+                                 ( T.getInt' fx <= T.getInt' x &&  T.getInt' x <= T.getInt' tx ||
+                                 T.getInt' tx <= T.getInt' x &&  T.getInt' x <= T.getInt' fx)
+                            )
         isWillyOverWall _ _ _= False
                     
 
@@ -237,11 +277,29 @@ insertSymbol sym@(ST.Symbol id stype _ p) = do
                 Nothing -> put st{ST.symbolMap = M.insert id [sym'] m}
                 Just xs -> put st{ST.symbolMap = M.insert id (sym':xs) m}
 
+
+-- Check The existence and type of a TkId in the current context.
+-- If it is not available, put an error into the world errors,
+-- otherwise if the found id does not match the given function Type,
+-- Add an unmatched type error. If there was some error, this function returns
+-- False, otherwise returns true.
+checkTypeExst :: (ST.SymType -> Bool) -> T.TokPos -> RetState Bool
+checkTypeExst f id = do
+    sym <- findSymbol (T.getId' id) 
+
+    if isNothing sym
+        then addError (ST.UndefRef id) >> return False
+    else if let stype = ST.symType (fromJust sym) in not (f stype) 
+        then addError (ST.UnmatchedType id) >> return False
+    else return True
+
+-- adds the given error to the world erros
 addError :: ST.Error -> RetState ()
 addError err = do
-    (st@ST.SymbolTable{ ST.errors = oldErrs}) <- get
+    st@ST.SymbolTable{ ST.errors = oldErrs} <- get
     put st{ST.errors = show err:oldErrs}
 
+-- Wraps a tupe a into a RetState monad
 retStateWrap :: a -> RetState a
 retStateWrap = return
 

@@ -2,8 +2,12 @@ begin-world mimundo
     World 10 10;
     Object-type bola of color red;
 
-    Place 10 of bolaas at 100 100;
+
+    Place 10 of bola in basket;
+    
+
     Wall north from 1 1 to 1 2;
+    Start at 1 2 heading north;
     
   
 end-world

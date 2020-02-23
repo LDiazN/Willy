@@ -8,7 +8,7 @@ data SymType = BoolVar  {initVal :: T.TokPos}
              | ObjType  {objColor :: E.WorldStmnt}
              | DefineFunc { body :: E.TaskStmnt }
              | Goal { goal :: E.GoalTest }
-             | World{ worldSize :: [E.WorldStmnt], walls :: [E.WorldStmnt], startPos :: [E.WorldStmnt], capacity :: [E.WorldStmnt], finalGoal :: [E.WorldStmnt]} 
+             | World{ worldSize :: [E.WorldStmnt], walls :: [E.WorldStmnt], startPos :: [E.WorldStmnt], capacity :: [E.WorldStmnt], finalGoal :: [E.WorldStmnt], placeIn :: [E.WorldStmnt]} 
              | Task{ exprs :: E.ProgPart }
 
              deriving(Show,Eq)
@@ -43,6 +43,12 @@ data Error = SymRedef{ redefinedSym :: Symbol }
            | PlaceOutOfBound{ worldbound :: (Int,Int), objPos :: (Int,Int), plcPos::T.TokPos}
            | UndefRef{ undefId :: T.TokPos }
            | InvalidObjType { invOTId :: T.TokPos }
+           | CapacityExceeded { excObId :: T.TokPos, excAmnt :: T.TokPos, excPos :: T.TokPos }
+           | UnmatchedType { givId ::  T.TokPos}
+           | PlaceZeroObj{ zerrPos :: T.TokPos }
+           | RedefStartPos{ redefStPos :: T.TokPos}
+           | StartPosOOB{ oobPos :: T.TokPos }
+           | WillyOverWall{ wowPos :: T.TokPos }
 
 instance Show Context where
     show NoCon = "Sin contexto"
@@ -96,6 +102,27 @@ instance Show Error where
                                  "\n    Nombre: " ++ T.getId' tkid ++
                                  "\nEn: " ++ posToString ( T.pos tkid)
 
+    show (CapacityExceeded oid amt pos) = "Willy Context Error: Excedida capacidad de la cesta." ++
+                                          "\n   Proveniente de colocar " ++ show (T.getInt' amt) ++
+                                          " de " ++ T.getId' oid ++
+                                          "\nCerca de " ++ posToString (T.pos pos)
+
+    show (UnmatchedType gid) = "Willy Context Error: El identificador dado no referencia el tipo requerido." ++
+                                "\n   Identificador: " ++ show (T.getId' gid) ++
+                                "\nEn la " ++ posToString (T.pos gid)
+
+    show (PlaceZeroObj pos)  = "Willy Context Error: No se pueden añadir 0 elementos a la cesta." ++
+                                "\nEn la" ++ posToString (T.pos pos)
+
+    show (RedefStartPos pos) = "Willy Context Error: Redefinición de posición inicial." ++
+                               "\nCerca de " ++ posToString (T.pos  pos)
+
+    show (StartPosOOB pos) = "Willy Context Error: Posición inicial fuera de los límited del mundo." ++
+                             "\nCerca de " ++ posToString (T.pos pos)
+
+    show (WillyOverWall pos) = "Willy Context Error: Willy posicionado sobre un muro." ++
+                               "\nCerca de " ++ posToString (T.pos pos)
+
 posToString :: (Int, Int) -> String
 posToString pos = "linea: " ++ (show . fst ) pos ++ 
                   ", columna: " ++ (show . snd ) pos
@@ -127,4 +154,4 @@ isObjType _ = False
 
 -- Empty constructor for symtypes
 emptyWorld :: SymType
-emptyWorld = World [] [] [] [] []
+emptyWorld = World [] [] [] [] [] []
