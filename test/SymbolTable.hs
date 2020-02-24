@@ -6,20 +6,30 @@ import qualified Data.Map as M
 -- The possible symbols:
 data SymType = BoolVar  {initVal :: T.TokPos}
              | ObjType  {objColor :: E.WorldStmnt}
-             | DefineFunc { body :: E.TaskStmnt }
+             | DefineFunc { body :: E.TaskStmnt , fBlockId :: Int}
              | Goal { goal :: E.GoalTest }
-             | World{ worldSize :: [E.WorldStmnt], walls :: [E.WorldStmnt], startPos :: [E.WorldStmnt], capacity :: [E.WorldStmnt], finalGoal :: [E.WorldStmnt], placeIn :: [E.WorldStmnt]} 
-             | Task{ exprs :: E.ProgPart }
+             | World{ 
+                    worldSize :: [E.WorldStmnt], 
+                    walls :: [E.WorldStmnt], 
+                    startPos :: [E.WorldStmnt], 
+                    capacity :: [E.WorldStmnt], 
+                    finalGoal :: [E.WorldStmnt], 
+                    placeIn :: [E.WorldStmnt],
+                    wBlockId :: Int
+                    } 
+             | Task{ exprs :: E.ProgPart, tBlockId :: Int }
 
              deriving(Show,Eq)
 
 -- Symbol type: Useful information about a symbol
 data Symbol = Symbol {
-    symId      :: String,
-    symType    :: SymType,
-    symContext :: Int,
-    symPos     :: (Int,Int)
-}
+                symId      :: String,
+                symType    :: SymType,
+                symContext :: Int,
+                symPos     :: (Int,Int)
+            }
+
+            deriving(Show)
 
 -- SymbolTable type: useful information for context check
 data SymbolTable = SymbolTable{
@@ -52,11 +62,14 @@ data Error = SymRedef{ redefinedSym :: Symbol }
            | RedefBaskCapacity{ redefBskPos :: T.TokPos }
            | NullBaskCapacity{ nullbskPos :: T.TokPos }
            | RedefFGoal{ fgPos :: T.TokPos }
+           | NoFinalGoal{ fgworldName :: String }
 
 instance Show Context where
     show NoCon = "Sin contexto"
     show WorldCon = "Contexto World"
     show TaskCon = "Contexto Task"
+
+
 
 instance Show Error where
     show (SymRedef m) = "Willy Context Error: Redefinicion de " ++ symId m ++ 
@@ -136,6 +149,10 @@ instance Show Error where
     show (RedefFGoal pos) = "Willy Context Error: Redefinición de objetivo final" ++
                             "\nEn " ++ posToString (T.pos pos)
 
+    show (NoFinalGoal name) = "Willy Context Error: Sin definición de objetivo final." ++
+                              "\n   En el mundo nombrado por: \"" ++ name ++ "\"" 
+
+-- This function returns a formated string with a position in file
 posToString :: (Int, Int) -> String
 posToString pos = "linea: " ++ (show . fst ) pos ++ 
                   ", columna: " ++ (show . snd ) pos
@@ -167,4 +184,4 @@ isObjType _ = False
 
 -- Empty constructor for symtypes
 emptyWorld :: SymType
-emptyWorld = World [] [] [] [] [] []
+emptyWorld = World [] [] [] [] [] [] 0

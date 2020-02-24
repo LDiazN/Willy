@@ -22,17 +22,17 @@ data WorldStmnt = Wall{direction :: TokPos, from :: (TokPos, TokPos), to :: (Tok
                 deriving(Eq, Show)
                 
 data TaskStmnt = IfCondition{ ifCondition :: BoolExpr, succInstruction :: TaskStmnt, failInstruction :: TaskStmnt } 
-               | Move       { tokenMove :: TokPos }
                | Repeat     { repeatTimes :: TokPos, repInstruction :: TaskStmnt }                                  
                | WhileCond  { whileCondition :: BoolExpr, whileIntruct :: TaskStmnt }                              
                | BeginEnd   { beginPos :: TokPos, beginIntructs :: [TaskStmnt] }                                    
                | DefineFunc { funcName :: TokPos, funcInstruct :: TaskStmnt }                                       
+               | Move       { tokenMove :: TokPos }
                | TurnLeft   { tokenTLeft :: TokPos }
                | TurnRight  { tokenTRight :: TokPos }
-               | Pick       { pickObj :: TokPos }
+               | Pick       { pickObj :: TokPos }  --
                | Drop       { dropObj :: TokPos }
-               | SetOper    {varToSet :: TokPos, boolVar :: TokPos}
-               | ClearOper  {clearPos :: TokPos, varToClear :: TokPos}
+               | SetOper    { varToSet :: TokPos, boolVar :: TokPos }
+               | ClearOper  { clearPos :: TokPos, varToClear :: TokPos }
                | FlipOper   { flipPos :: TokPos, varToFlip :: TokPos}
                | Terminate  { terminatePos :: (Int, Int)}
                | FuncCall   {funcId :: TokPos}

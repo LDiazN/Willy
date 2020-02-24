@@ -6,6 +6,8 @@ import System.IO
 import System.Environment
 import Data.Maybe
 import Data.Typeable
+import Data.List
+import Data.Function
 import qualified Expresions as E
 import qualified Tokens as T
 import qualified Data.Map as M
@@ -15,8 +17,8 @@ import qualified SymbolTable as ST
 type ContextState = ST.SymbolTable
 type RetState  a  = StateT ContextState IO a
 
-analyzeAST :: E.AST -> IO ()
-analyzeAST ast = runStateT (analyzer ast) (ST.SymbolTable M.empty [] 0 ST.NoCon []) >> return ()
+analyzeAST :: E.AST -> IO ((), ContextState) 
+analyzeAST ast = runStateT (analyzer ast) (ST.SymbolTable M.empty [0] 1 ST.NoCon []) 
 
 analyzer :: E.AST -> RetState ()
 analyzer ast = unless (null ast) $ do
@@ -36,73 +38,94 @@ analyzer ast = unless (null ast) $ do
             -- The symbol name
             let id = T.getId . T.tok $ name
 
-            -- Since we start a new context, push an empty context table
-            pushEmptyTable
 
             
             --Check if the world can be inserted
             available <- findSymbol id 
             case available of 
                 Nothing -> do
-                        -- Update state to world context:
-                        st <- get
-                        put st{ST.context = ST.WorldCon}
+                    -- Since we start a new context, push an empty context table
+                    pushEmptyTable
+                    -- Update state to world context:
+                    st@ST.SymbolTable{ST.contextCounter = bid} <- get
+                    put st{ST.context = ST.WorldCon}
 
-                        -- Create the world type
-                        worldType@ST.World{ST.worldSize = ws, 
-                                           ST.capacity = capc, 
-                                           ST.startPos = stpos} <-  foldl addWorldIntr' (retStateWrap ST.emptyWorld) ppts
-                        -- Return to normal Sate
+                    -- Create the world type
+                    worldType@ST.World{
+                                    ST.worldSize = ws, 
+                                    ST.capacity = capc, 
+                                    ST.startPos = stpos,
+                                    ST.finalGoal = fgoal} <-  foldl addWorldIntr' (retStateWrap ST.emptyWorld) ppts
+                    -- Return to normal Sate
 
-                        st <- get
-                        put st{ST.context = ST.NoCon}
-                        -- Check the requirements of the world:
-                        -- 1) If no start position declaration, then add the default one (1,1, north)
-                        -- 2) If no basket capacity avalable, then add the default (capacity 1)
-                        -- 3) If no world size, then add the default (1,1)
-                        let 
-                            tkint1  = (T.TkInt 1, 0, 0)
-                            tknorth = (T.TkNorth, 0, 0)
+                    st <- get
+                    put st{ST.context = ST.NoCon}
+                    -- Check the requirements of the world:
+                    -- 1) If no start position declaration, then add the default one (1,1, north)
+                    -- 2) If no basket capacity avalable, then add the default (capacity 1)
+                    -- 3) If no world size, then add the default (1,1)
+                    -- 4) If final goal is null, then add an error
+                    let 
+                        tkint1  = (T.TkInt 1, 0, 0)
+                        tknorth = (T.TkNorth, 0, 0)
 
-                            worldType' = if null ws 
-                                            then worldType{ ST.worldSize = [E.WorldSize tkint1 tkint1] }
-                                            else worldType
-                            worldType''= if null capc
-                                            then worldType'{ ST.capacity = [E.BasketCapacity tkint1] }
-                                            else worldType'
-                            fWorldType = if null stpos
-                                            then worldType''{ST.startPos = [E.StartAt (tkint1,tkint1) tknorth ]}
-                                            else worldType''
+                        worldType' = if null ws 
+                                        then worldType{ ST.worldSize = [E.WorldSize tkint1 tkint1] }
+                                        else worldType
+                        worldType''= if null capc
+                                        then worldType'{ ST.capacity = [E.BasketCapacity tkint1] }
+                                        else worldType'
+                        fWorldType = if null stpos
+                                        then worldType''{ST.startPos = [E.StartAt (tkint1,tkint1) tknorth ]}
+                                        else worldType''
+                    
+                    -- Check if the final goal is null:
+                    when (null fgoal) $ addError (ST.NoFinalGoal id)
+                    -- pop the world context
+                    popContext
 
-                        -- Add the new created  world
-                        insertSymbol $ ST.Symbol id fWorldType 0 (T.pos name)
-                        return ()
-
-                Just _ -> do
+                    -- Add the new created  world
+                    insertSymbol $ ST.Symbol id fWorldType{ST.wBlockId = bid} 0 (T.pos name)
+                    
+                Just _ -> 
                         -- When we try to insert a symbol that already exists, the insert
                         -- method will place an error on the error Stack
                         insertSymbol $ ST.Symbol id ST.emptyWorld 0 (T.pos name) 
-                        return ()
-
-
-
-            -- If it is possible to add the world, check if it is correct
-            --when try $
-
             return ()
 
         processProgPart t@(E.Task name ww instrs) = do
-            let id  = T.getId' name
-                
+
+            ST.SymbolTable{ST.contextCounter = bid} <- get
+
+            let id   = T.getId' name    
+                tsymType = ST.Task t bid
+                tsym = ST.Symbol (T.getId' name) tsymType 0 (T.pos name)
             -- check if the world is a valid world
             valid <- checkTypeExst ST.isWorld ww
+            -- search its context
+                -- if it is valid, then add the context of the world to the current context
+            when  valid $ do
+                    st@ST.SymbolTable{ ST.contextStack = stk} <- get 
+                    Just ST.Symbol{ST.symContext = scont} <- findSymbol (T.getId' ww)
+                    put st{ST.contextStack = scont:stk}
 
-            --  Process the current world
+            --Push the context for the current task
+            pushEmptyTable
+            
             -- Update the context to task context
             st  <- get
             put st{ST.context = ST.TaskCon} 
 
-            return ()
+            -- Check the task:
+            checkInstructions instrs
+
+            popContext
+
+            insertSymbol tsym
+            -- Pop the world if needed
+            when valid  $ void popContext
+
+            
 
         -- This function gets a world statement and a world symbol type and 
         -- try to add the given property to the world
@@ -223,22 +246,13 @@ analyzer ast = unless (null ast) $ do
             | not (null fgoal)  = addError (ST.RedefFGoal fgpos) >> return w
             | otherwise = do
 
-                mybools <- mapM (checkTypeExst isBool') (names be)
+                b <- checkBoolExpr be
                 --io (print $ typeOf bools)
 
-                if and  mybools
+                if b
                     then return w{ST.finalGoal = [stmnt]} 
                     else return w
-            where 
-                -- This function returns all the variable names in a bool expr
-                names :: E.BoolExpr -> [T.TokPos]
-                names (E.Constant t) = [t]
-                names E.Operation{E.operand1 = op1, E.operand2 = op2} = names op1 ++ names op2
-                names (E.NotExpr ne)  = names ne
-                names _ = []
-
-                isBool' :: ST.SymType -> Bool
-                isBool' s = ST.isBool s || ST.isGoal s
+            
 
         addWorldIntr w _ = return w
 
@@ -248,9 +262,92 @@ analyzer ast = unless (null ast) $ do
 
         --Check a Task Statement for errors
         checkInstruction :: E.TaskStmnt -> RetState ()
+        -- Check a function call
         checkInstruction (E.FuncCall fname) = void (checkTypeExst ST.isDef fname)
+
+        -- Check an if block
+        checkInstruction (E.IfCondition ifCond sins fins) = do
+            -- Create a new context for the if block
+            pushEmptyTable
+
+            -- check if all the names in the boolExpr are correct
+            checkBoolExpr ifCond 
+            -- Check the success instruction
+            checkInstruction sins
+            -- Check the fail instruction
+            checkInstruction fins
+
+            -- Pop the if-block context
+            popContext
+            return ()
+
+        -- Check a while block
+
+        checkInstruction (E.WhileCond wCond inst ) = do
+            
+            -- Create a new context for the if block
+            pushEmptyTable
+
+            -- check if all the names in the boolExpr are correct
+            checkBoolExpr wCond 
+            -- Check the success instruction
+            checkInstruction inst
+
+            -- Pop the if-block context
+            popContext
+            return ()
+
+        --Check the repeat instruction
+        checkInstruction (E.Repeat _ inst) = do
+            
+            -- Create a new context for the if block
+            pushEmptyTable
+ 
+            -- Check the success instruction
+            checkInstruction inst
+
+            -- Pop the if-block context
+            popContext
+            return ()
         
+        --Check the begin instruction:
+        checkInstruction (E.BeginEnd _ instrs) = void (pushEmptyTable >> checkInstructions instrs >> popContext)
+        
+        --Check the define instruction:
+        checkInstruction (E.DefineFunc fname finst) = do
+
+            ST.SymbolTable{ST.contextCounter = bid} <- get
+
+            let name  = T.getId' fname
+                stype = ST.DefineFunc finst bid
+                pos   = T.pos fname
+
+            insertSymbol (ST.Symbol name stype 0 pos)
+
+            pushEmptyTable
+
+            checkInstruction finst
+
+            popContext
+            return()
+        
+        --check pick
+        checkInstruction (E.Pick oid) = void $ checkTypeExst ST.isObjType oid
+
+        -- check drop
+        checkInstruction (E.Drop oid) = void $ checkTypeExst ST.isObjType oid
+
+        -- check set
+        checkInstruction (E.SetOper _ oid) = void $ checkTypeExst ST.isBool oid
+
+        -- check Clear
+        checkInstruction (E.ClearOper _ oid) = void $ checkTypeExst ST.isBool oid
+
+        --check flip
+        checkInstruction (E.FlipOper _ oid) = void $ checkTypeExst ST.isBool oid
+
         checkInstruction _ = return ()
+
         addWorldIntr' :: RetState ST.SymType -> E.WorldStmnt -> RetState ST.SymType     
         addWorldIntr' w stmnt = do
             w' <- w
@@ -310,7 +407,7 @@ findSymbol name = do
 
     case M.lookup name m of
         Nothing     -> return Nothing
-        Just syms   -> return $ head' $ filter (available stk) syms
+        Just syms   -> return . Just $ maximumBy (compare `on` ST.symContext) (filter (available stk) syms)
                                 
     where 
         
@@ -334,16 +431,17 @@ insertSymbol sym@(ST.Symbol id stype _ p) = do
 
     case exists of
         -- The symbol is in the table in the current context
-        Just s@ST.Symbol{ST.symContext = scon} -> 
+        Just s@ST.Symbol{ST.symContext = scon} ->
+            
             if scon == currCont
                 then put st{ST.errors = show (ST.SymRedef sym):errs} >> return False
-                else insertSymbol' sym{ST.symContext = head stk} >> return True
+                else insertSymbol' sym{ST.symContext = currCont} >> return True
 
         Nothing -> do
                     check <- checkCtxt sym
                     if not check
                         then put st{ST.errors = show (ST.UnmatchContext sym ctxt):errs} >> return False
-                        else insertSymbol' sym{ST.symContext = head stk} >> return True
+                        else insertSymbol' sym{ST.symContext = currCont} >> return True
 
     where 
         
@@ -386,6 +484,19 @@ checkTypeExst f id = do
     else if let stype = ST.symType (fromJust sym) in not (f stype) 
         then addError (ST.UnmatchedType id) >> return False
     else return True
+
+checkBoolExpr :: E.BoolExpr -> RetState Bool
+checkBoolExpr be = and <$> mapM (checkTypeExst isBool') (names be)
+    where 
+        -- This function returns all the variable names in a bool expr
+        names :: E.BoolExpr -> [T.TokPos]
+        names (E.Constant t) = [t]
+        names E.Operation{E.operand1 = op1, E.operand2 = op2} = names op1 ++ names op2
+        names (E.NotExpr ne)  = names ne
+        names _ = []
+
+        isBool' :: ST.SymType -> Bool
+        isBool' s = ST.isBool s || ST.isGoal s
 
 -- adds the given error to the world erros
 addError :: ST.Error -> RetState ()
