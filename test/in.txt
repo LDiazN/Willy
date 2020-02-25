@@ -5,7 +5,7 @@ begin-world mimundo
   Wall north from 2 2 to 2 3;;
   Wall south from 2 2 to 2 1;;
 
-  
+  Goal mygoal is willy is at 1 1;
 
   Final goal is true;
 
@@ -13,10 +13,16 @@ end-world
 
 begin-task mitask on mimundo
 
+
+    if true then move; else move;
+
     define f1 as 
         define f1 as
             move;
         ;
     ;
+
+
+    f1;
 
 end-task

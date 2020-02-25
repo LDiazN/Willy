@@ -82,3 +82,4 @@ instance Show TaskStmnt where
     show (FuncCall  fn) = "LLAMADA A FUNCION:\n  " ++ (getId . tok $ fn)
     show (BeginEnd _ _) = "BLOQUE DE INSTRUCCIONES:"
     
+    show _ = "what"

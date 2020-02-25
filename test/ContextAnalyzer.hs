@@ -27,11 +27,9 @@ analyzer ast = unless (null ast) $ do
             mapM_ processProgPart ast
             
             -- Check for errors
-            (ST.SymbolTable _ _ _ _ e)  <- get
-
-            if null e
-                then io $ putStrLn "Everything ok"
-                else io (mapM_ (putStrLn . (++ "\n")) (reverse e) >> return ())
+            ST.SymbolTable{ST.errors =  e}  <- get
+            -- print Errors if needed
+            unless (null e) $ io (mapM_ (putStrLn . (++ "\n")) (reverse e) >> return ())
 
     where 
         processProgPart :: E.ProgPart -> RetState ()
