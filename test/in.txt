@@ -1,16 +1,22 @@
 begin-world mimundo
-    World 10 10;
-    Object-type bola of color red;
-
-    Basket of capacity 100;
-    Basket of capacity 0;
-    Place 10 of bola in basket;
     
+  Boolean mimundo with initial value  true;
+  World 10 10;
+  Wall north from 2 2 to 2 3;;
+  Wall south from 2 2 to 2 1;;
 
-    Wall north from 1 1 to 1 2;
-    Start at 1 2 heading north;
-
-    
   
+
+  Final goal is true;
+
 end-world
 
+begin-task mitask on mimundo
+
+    define f1 as 
+        define f1 as
+            move;
+        ;
+    ;
+
+end-task

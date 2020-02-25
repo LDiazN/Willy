@@ -23,6 +23,7 @@ analyzeAST ast = runStateT (analyzer ast) (ST.SymbolTable M.empty [0] 1 ST.NoCon
 analyzer :: E.AST -> RetState ()
 analyzer ast = unless (null ast) $ do
             --process all progparts:
+            
             mapM_ processProgPart ast
             
             -- Check for errors
@@ -37,9 +38,6 @@ analyzer ast = unless (null ast) $ do
         processProgPart w@(E.World name ppts) = do
             -- The symbol name
             let id = T.getId . T.tok $ name
-
-
-            
             --Check if the world can be inserted
             available <- findSymbol id 
             case available of 
@@ -85,13 +83,13 @@ analyzer ast = unless (null ast) $ do
                     popContext
 
                     -- Add the new created  world
-                    insertSymbol $ ST.Symbol id fWorldType{ST.wBlockId = bid} 0 (T.pos name)
+                    void (insertSymbol $ ST.Symbol id fWorldType{ST.wBlockId = bid} 0 (T.pos name))
                     
                 Just _ -> 
                         -- When we try to insert a symbol that already exists, the insert
                         -- method will place an error on the error Stack
-                        insertSymbol $ ST.Symbol id ST.emptyWorld 0 (T.pos name) 
-            return ()
+                        void(insertSymbol $ ST.Symbol id ST.emptyWorld 0 (T.pos name) )
+            
 
         processProgPart t@(E.Task name ww instrs) = do
 
@@ -121,11 +119,13 @@ analyzer ast = unless (null ast) $ do
 
             popContext
 
+
+            -- Update the context to task context
+            st  <- get
+            put st{ST.context = ST.NoCon} 
             insertSymbol tsym
             -- Pop the world if needed
             when valid  $ void popContext
-
-            
 
         -- This function gets a world statement and a world symbol type and 
         -- try to add the given property to the world
@@ -407,16 +407,17 @@ findSymbol name = do
 
     case M.lookup name m of
         Nothing     -> return Nothing
-        Just syms   -> return . Just $ maximumBy (compare `on` ST.symContext) (filter (available stk) syms)
+        Just syms   -> return $ maybeMaxBy (compare `on` ST.symContext) (filter (available stk) syms)
                                 
     where 
         
         available :: [Int] -> ST.Symbol -> Bool
         available xs (ST.Symbol _ _ c _) = foldl (\b a -> c==a || b) False xs
 
-        head' :: [a] -> Maybe a
-        head' [] = Nothing
-        head' (x:xs) = Just x
+        maybeMaxBy ::  (a -> a -> Ordering) -> [a] -> Maybe a
+        maybeMaxBy f [] = Nothing
+        maybeMaxBy f l = Just $ maximumBy f l
+
 
 --Insert a non existing symbol into the symbol table with the current context
 insertSymbol :: ST.Symbol -> RetState Bool
@@ -429,20 +430,21 @@ insertSymbol sym@(ST.Symbol id stype _ p) = do
     -- Check if the symbol already exists:
     exists <- findSymbol id
 
+    
     case exists of
         -- The symbol is in the table in the current context
         Just s@ST.Symbol{ST.symContext = scon} ->
-            
             if scon == currCont
                 then put st{ST.errors = show (ST.SymRedef sym):errs} >> return False
                 else insertSymbol' sym{ST.symContext = currCont} >> return True
 
         Nothing -> do
-                    check <- checkCtxt sym
-                    if not check
-                        then put st{ST.errors = show (ST.UnmatchContext sym ctxt):errs} >> return False
-                        else insertSymbol' sym{ST.symContext = currCont} >> return True
+            check <- checkCtxt sym
+            if not check
+                then put st{ST.errors = show (ST.UnmatchContext sym ctxt):errs} >> return False
+                else insertSymbol' sym{ST.symContext = currCont} >> return True
 
+    
     where 
         
         -- This functions checks if the symbol can be inserted 
@@ -460,7 +462,7 @@ insertSymbol sym@(ST.Symbol id stype _ p) = do
         --This function inserts an already checked symbol into the table
         insertSymbol' :: ST.Symbol -> RetState ()
         insertSymbol' sym' = do
-
+            
             st@(ST.SymbolTable m stk nxt ctxt errs ) <- get
             
             let list = M.lookup (ST.symId sym') m
@@ -490,7 +492,7 @@ checkBoolExpr be = and <$> mapM (checkTypeExst isBool') (names be)
     where 
         -- This function returns all the variable names in a bool expr
         names :: E.BoolExpr -> [T.TokPos]
-        names (E.Constant t) = [t]
+        names (E.Constant t@(T.TkId _, _, _)) = [t]
         names E.Operation{E.operand1 = op1, E.operand2 = op2} = names op1 ++ names op2
         names (E.NotExpr ne)  = names ne
         names _ = []

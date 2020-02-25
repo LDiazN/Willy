@@ -1,6 +1,7 @@
 import Lexer
 import Parser
 import System.IO
+import Control.Monad
 import System.Environment
 import Tokens
 import Expresions
@@ -15,7 +16,7 @@ main = do
     case tokenizer content of
         Right tks ->
 
-            analyzeAST . parseClean . cleanTokens $ tks
+            void (analyzeAST . parseClean . cleanTokens $ tks) 
         Left s ->
             putStrLn s
 
