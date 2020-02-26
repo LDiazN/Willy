@@ -1,4 +1,8 @@
+-- This module contains the data structure of the SymbolTable. 
+-- Since the symbol table needs a state to work, all the operations
+-- the table supports relies on the ContextAnalyzer module
 module SymbolTable where
+
 import qualified Expresions as E
 import qualified Tokens as T
 import qualified Data.Map as M
@@ -64,13 +68,13 @@ data Error = SymRedef{ redefinedSym :: Symbol }
            | RedefFGoal{ fgPos :: T.TokPos }
            | NoFinalGoal{ fgworldName :: String }
 
+
 instance Show Context where
     show NoCon = "Sin contexto"
     show WorldCon = "Contexto World"
     show TaskCon = "Contexto Task"
 
-
-
+-- The possible error messages
 instance Show Error where
     show (SymRedef m) = "Willy Context Error: Redefinicion de " ++ symId m ++ 
                         "\n   En la línea: " ++ (show . fst . symPos) m ++
@@ -157,7 +161,9 @@ posToString :: (Int, Int) -> String
 posToString pos = "linea: " ++ (show . fst ) pos ++ 
                   ", columna: " ++ (show . snd ) pos
 
--- aux symTypes functions
+-- aux SymTypes functions:
+--The following functions can tell is the given 
+-- symtype match an specific symtype member
 isBool :: SymType -> Bool
 isBool BoolVar{} = True
 isBool _         = False

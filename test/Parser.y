@@ -11,9 +11,11 @@ import Expresions
 %error { parseError }
 
 -- Precedence directives
+%nonassoc then
+%nonassoc else
 %left or
 %left and
-%left not
+%nonassoc not
 
 -- Possible tokens:
 %token
@@ -135,30 +137,34 @@ import Expresions
                 | willy_prog prog_part                        { $2 : $1 }
 
     prog_part   :: { ProgPart }
-    prog_part   : beginworld name world_stmts endworld        { World $2 $ reverse $3 }
+    prog_part   : beginworld name  world_stmts endworld       { World $2 $ reverse $3 }
+                | beginworld name sc world_stmts endworld     { World $2 $ reverse $4 }
                 | beginworld name endworld                    { World $2 [] }
+                | beginworld name sc endworld                 { World $2 [] }
+                | beginTask name on name sc task_stmts endTask{ Task $2 $4 $ reverse $6 }
                 | beginTask name on name task_stmts endTask   { Task $2 $4 $ reverse $5 }
+                | beginTask name on name sc endTask           { Task $2 $4 [] }
                 | beginTask name on name endTask              { Task $2 $4 [] }
 
 
     -- World Creation statements --
 
     world_stmts :: { [WorldStmnt] }
-    world_stmts : world_stmts ';' world_stmt                  { $3:$1 }
+    world_stmts : world_stmts world_stmt                      { $2:$1 }
                 | world_stmts ';'                             { $1 }
                 | world_stmt                                  { [$1] }            
 
     world_stmt  :: { WorldStmnt }
-    world_stmt  : Wall direction from pos to pos              { Wall $2 $4 $6 }
-                | World int int                               { WorldSize $2 $3 }
-                | ObjectType name of color colorVal           { ObjectType $2 $5 }
-                | Place int of name at pos                    { PlaceAt $4 $2 $6 }
-                | Place int of name in basket                 { PlaceIn $4 $2 }
-                | Start at pos heading direction              { StartAt $3 $4 }
-                | Basket of capacity int                      { BasketCapacity $4 }
-                | Boolean name with initial value boolVal     { BooleanVar $2 $6}
-                | Goal name is goalTest                       { Goal $2 $4 }
-                | Final goal is boolExpr                      { FGoal $4 $1}
+    world_stmt  : Wall direction from pos to pos ';'          { Wall $2 $4 $6 }
+                | World int int ';'                           { WorldSize $2 $3 }
+                | ObjectType name of color colorVal ';'       { ObjectType $2 $5 }
+                | Place int of name at pos ';'                { PlaceAt $4 $2 $6 }
+                | Place int of name in basket ';'             { PlaceIn $4 $2 }
+                | Start at pos heading direction ';'          { StartAt $3 $4 }
+                | Basket of capacity int ';'                  { BasketCapacity $4 }
+                | Boolean name with initial value boolVal ';' { BooleanVar $2 $6}
+                | Goal name is goalTest ';'                   { Goal $2 $4 }
+                | Final goal is wboolExpr ';'                 { FGoal $4 $1}
 
 
     goalTest    :: { GoalTest }
@@ -169,31 +175,31 @@ import Expresions
     -- Task Creation Statements --
     
     task_stmts  :: { [TaskStmnt] }
-    task_stmts  : task_stmts ';' task_stmt                    { $3:$1 }
+    task_stmts  : task_stmts task_stmt                        { $2:$1 }
                 | task_stmts ';'                              { $1 } 
                 | task_stmt                                   { [$1] }
 
     task_stmt   :: { TaskStmnt }
                 -- Control --
-    task_stmt   : if boolExpr then task_stmt ';'              { IfCondition $2 $4 Skip }
-                | if boolExpr then task_stmt else task_stmt ';'{ IfCondition $2 $4 $6 }
-                | repeat int times task_stmt ';'              { Repeat $2 $4 }
-                | while boolExpr do task_stmt ';'             { WhileCond $2 $4 }
+    task_stmt   : if boolExpr then task_stmt                  { IfCondition $2 $4 Skip }
+                | if boolExpr then task_stmt else task_stmt   { IfCondition $2 $4 $6 }
+                | repeat int times task_stmt                  { Repeat $2 $4 }
+                | while boolExpr do task_stmt                 { WhileCond $2 $4 }
                 | begin end                                   { BeginEnd $1 [] }
                 | begin task_stmts end                        { BeginEnd $1 $ reverse $2 }
-                | define name as task_stmt ';'                { DefineFunc $2 $4 }
+                | define name as task_stmt                    { DefineFunc $2 $4 }
                 -- Primitive instructions --
-                | move                                        { Move $1 }
-                | turnLeft                                    { TurnLeft $1 }
-                | turnRight                                   { TurnRight $1 }
-                | pick name                                   { Pick $2 }
-                | drop name                                   { Drop $2 }
-                | set name                                    { SetOper $2 (TkTrue, 0, 0) }
-                | set name to boolVal                         { SetOper $2 $4 }
-                | clear name                                  { ClearOper $1 $2 }
-                | flip name                                   { FlipOper $1 $2 }                    
-                | terminate                                   { Terminate $ pos $1 }
-                | name                                        { FuncCall $1 }
+                | move ';'                                    { Move $1 }
+                | turnLeft ';'                                { TurnLeft $1 }
+                | turnRight ';'                               { TurnRight $1 }
+                | pick name ';'                               { Pick $2 }
+                | drop name ';'                               { Drop $2 }
+                | set name ';'                                { SetOper $2 (TkTrue, 0, 0) }
+                | set name to boolVal ';'                     { SetOper $2 $4 }
+                | clear name ';'                              { ClearOper $1 $2 }
+                | flip name ';'                               { FlipOper $1 $2 }                    
+                | terminate ';'                               { Terminate $ pos $1 }
+                | name ';'                                    { FuncCall $1 }
 
 
     query       :: { TokPos }
@@ -201,6 +207,14 @@ import Expresions
                 | carrying                                    { $1 } 
 
     -- Expresions --
+    wboolExpr   :: {BoolExpr}                                 
+    wboolExpr   : name                                        { Constant $1 }
+                | wboolExpr and wboolExpr                     { Operation $2 $1 $3 }
+                | wboolExpr or wboolExpr                      { Operation $2 $1 $3 }
+                | not wboolExpr                               { NotExpr $2 }
+                | '(' wboolExpr ')'                           { $2 }
+                
+                
 
     boolExpr    :: {BoolExpr}                                
     boolExpr    : true                                        { Constant $1 }
@@ -221,8 +235,6 @@ import Expresions
 
 
     -- Constants --
-
-
 
     direction   :: { TokPos }
     direction   : north                                       { $1 }
@@ -245,7 +257,8 @@ import Expresions
     pos         :: { (TokPos, TokPos) }
     pos         : int int                                     { ($1, $2) }
 
-
+    sc          : ';'                                         { [] }
+                | sc ';'                                      { $1 }
     
 ------------------
 -- Haskell code --
@@ -253,11 +266,14 @@ import Expresions
 {
     -- < Required by happy > --
 parseError :: [TokPos] -> a
-parseError (e:es) = error $ "Unexpected token: " ++ show (tok e)  ++ "\n At line: "  ++ show ( fst (pos e) )  ++ ", Column: "  ++ show ( snd (pos e) )
+parseError (e:es) = error $ "Unexpected token: " ++ show (tok e)  ++ 
+                            "\n At line: "  ++ show ( fst (pos e) )  ++ 
+                            ", Column: "  ++ show ( snd (pos e) )
 parseError []     = error "Unexpected EOF"
 
-    -- < Parser functions > --
 
+    -- < Parser functions > --
 parseClean :: [TokPos] -> [ProgPart]
 parseClean = reverse . parse
+
 }

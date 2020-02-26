@@ -17,9 +17,12 @@ import qualified SymbolTable as ST
 type ContextState = ST.SymbolTable
 type RetState  a  = StateT ContextState IO a
 
+
+--Given an AST, returns the corresponding symbol table
 analyzeAST :: E.AST -> IO ((), ContextState) 
 analyzeAST ast = runStateT (analyzer ast) (ST.SymbolTable M.empty [0] 1 ST.NoCon []) 
 
+-- Analyze the given ast 
 analyzer :: E.AST -> RetState ()
 analyzer ast = unless (null ast) $ do
             --process all progparts:
@@ -116,7 +119,6 @@ analyzer ast = unless (null ast) $ do
             checkInstructions instrs
 
             popContext
-
 
             -- Update the context to task context
             st  <- get
@@ -251,7 +253,6 @@ analyzer ast = unless (null ast) $ do
                     then return w{ST.finalGoal = [stmnt]} 
                     else return w
             
-
         addWorldIntr w _ = return w
 
         --Check a Task Statement set 
@@ -280,7 +281,6 @@ analyzer ast = unless (null ast) $ do
             return ()
 
         -- Check a while block
-
         checkInstruction (E.WhileCond wCond inst ) = do
             
             -- Create a new context for the if block
@@ -346,6 +346,8 @@ analyzer ast = unless (null ast) $ do
 
         checkInstruction _ = return ()
 
+        -- aux function, given a RetState-wrapped symtype, and a world statement, 
+        -- returns a RetState wrapped symtype.
         addWorldIntr' :: RetState ST.SymType -> E.WorldStmnt -> RetState ST.SymType     
         addWorldIntr' w stmnt = do
             w' <- w
@@ -375,8 +377,9 @@ analyzer ast = unless (null ast) $ do
                                  ( T.getInt' fx <= T.getInt' x &&  T.getInt' x <= T.getInt' tx ||
                                  T.getInt' tx <= T.getInt' x &&  T.getInt' x <= T.getInt' fx)
                             )
+        
         isWillyOverWall _ _ _= False
-                    
+                
 
 -- Add a new symbol table. In fact, just update the context stack and increase the
 -- next-context counter
@@ -427,7 +430,6 @@ insertSymbol sym@(ST.Symbol id stype _ p) = do
         currCont = head stk
     -- Check if the symbol already exists:
     exists <- findSymbol id
-
     
     case exists of
         -- The symbol is in the table in the current context
@@ -441,7 +443,6 @@ insertSymbol sym@(ST.Symbol id stype _ p) = do
             if not check
                 then put st{ST.errors = show (ST.UnmatchContext sym ctxt):errs} >> return False
                 else insertSymbol' sym{ST.symContext = currCont} >> return True
-
     
     where 
         
@@ -485,6 +486,9 @@ checkTypeExst f id = do
         then addError (ST.UnmatchedType id) >> return False
     else return True
 
+
+-- Given a Boolean expresion, tells if the Expresion contains correct symbols.
+-- If it doesn't, then add the corresponding errors to the error stack
 checkBoolExpr :: E.BoolExpr -> RetState Bool
 checkBoolExpr be = and <$> mapM (checkTypeExst isBool') (names be)
     where 

@@ -1,5 +1,5 @@
 begin-world mimundo
-    
+    ;;;;;;;;;;;
   Boolean mimundo with initial value  true;
   World 10 10;
   Wall north from 2 2 to 2 3;;
@@ -13,6 +13,7 @@ end-world
 
 begin-task mitask on mimundo
 
+    
 
     if true then move; else move;
 
@@ -24,5 +25,6 @@ begin-task mitask on mimundo
 
 
     f1;
+    ;;;;;;;;
 
 end-task
