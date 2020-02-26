@@ -1,13 +1,11 @@
+all: Lexer Parser 
+	ghc --make -dynamic Willy.hs 
 
-
-
-
-
-all: Lexer
-	ghc --make Willy.hs 
-
-Lexer:
+Lexer: Lexer.x
 	alex Lexer.x -o Lexer.hs -g
 
+Parser: Parser.y
+	happy Parser.y
+
 clear:
-	rm *.hi *o Lexer.hs
+	rm  Willy *.hi *o Lexer.hs Parser.hs
