@@ -133,7 +133,6 @@ tokens :-
 
     <0> \(                          {storeToken TkParOpen}
     <0> \)                          {storeToken TkParClose}
-    <0> \;                          {storeToken TkSemiColon}
 
     <0> \-\- ~[]* \n                {storeToken TkInLineComm}
 
@@ -205,7 +204,7 @@ tokenizer inpt = do
 --  toks: A list of tokens given by the tokenizer function
 -- Return:
 --  A string with the description of the given program tokens
-displayTokens :: [TokPos] -> IO Bool
+displayTokens :: [TokPos] -> String
 displayTokens toks = 
     let errs = filterErrors toks    -- The errors in the tokens
         closingBraces =             -- This int is used to tell if all the long comments are closed
@@ -217,15 +216,10 @@ displayTokens toks =
         lines = reverse $ lineOrder toks      -- tokens arranged by lines
         
     in
-    if null errs  && closingBraces == 0 then do
-        putStrLn "Análisis Léxico ok"  
-        return True
-
+    if null errs  && closingBraces == 0 then
+        foldl (\ s l -> s ++ printLine l)  "" lines  
     else
-        do 
-            putStrLn (displayErrors errs closingBraces )
-            return False
-        
+        displayErrors errs closingBraces
         
 
 -- displayErrors:
@@ -245,7 +239,7 @@ displayErrors toks closed = foldl ( \ s t -> errorLog t ++ s) "" toks ++
 --Param: 
 --  toks: list of tokpos with general tokens
 --Return :
---  A list of token errors 
+--  A list of token errors only
 filterErrors :: [TokPos] -> [TokPos] 
 filterErrors toks = foldl (\ l t -> 
     case t of

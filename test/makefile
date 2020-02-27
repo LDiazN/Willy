@@ -1,12 +1,11 @@
+all: Lexer Parser 
+	ghc --make -dynamic Willy.hs 
 
+Lexer: Lexer.x
+	alex Lexer.x -o Lexer.hs -g
 
-all: lexer test
+Parser: Parser.y
+	happy Parser.y
 
-
-#Compila el Lexer con Alex
-lexer: lexer.x
-	alex lexer.x -o Lexer.hs -g
-
-#Compila test
-test: test.hs
-	ghc --make -dynamic test.hs
+clear:
+	rm  Willy *.hi *o Lexer.hs Parser.hs

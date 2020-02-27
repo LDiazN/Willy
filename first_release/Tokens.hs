@@ -102,8 +102,7 @@ data Token =
 
     TkFound                         |
     TkParOpen                       |    
-    TkParClose                      |  
-    TkSemiColon                     |  
+    TkParClose                      |    
     TkCarrying                      |
     TkInLineComm                    |
     TkLongComm                      |    
@@ -119,6 +118,7 @@ data Token =
 
     TkUndef                 String 
 
+
     deriving (Eq)
 
 
@@ -131,10 +131,10 @@ instance Show Token where
    
     show TkWall                   = "TkWall"
    
-    show TkNorth                  = "north"
-    show TkSouth                  = "south"
-    show TkEast                   = "east"
-    show TkWest                   = "west"
+    show TkNorth                  = "TkNorth"
+    show TkSouth                  = "TkSouth"
+    show TkEast                   = "TkEast"
+    show TkWest                   = "TkWest"
 
     show TkFrom                   = "TkFrom"
     show TkTo                     = "TkTo"
@@ -159,8 +159,8 @@ instance Show Token where
     show TkCapacity               = "TkCapacity"
 
     show TkBoolean                = "TkBoolean"
-    show TkTrue                   = "true"
-    show TkFalse                  = "false"
+    show TkTrue                   = "TkTrue"
+    show TkFalse                  = "TkFalse"
     
     show TkWith                   = "TkWith"
     show TkInitial                = "TkInitial"
@@ -177,9 +177,9 @@ instance Show Token where
     show TkObjects                = "TkObjects"
     show TkWilly                  = "TkWilly"
 
-    show TkAnd                    = "CONJUNCION"
-    show TkOr                     = "DISYUNCION"
-    show TkNot                    = "not"
+    show TkAnd                    = "TkAnd"
+    show TkOr                     = "TkOr"
+    show TkNot                    = "TkNot"
 
     show TkBeginTask              = "TkBeginTask"
     show TkOn                     = "TkOn"
@@ -211,53 +211,28 @@ instance Show Token where
     show TkFlip                   = "TkFlip"
     show TkTerminate              = "TkTerminate"
 
-    show TkFrontClear             = "front-clear"
-    show TkLeftClear              = "left-clear"
-    show TkRightClear             = "right-clear"
-    show TkLookingNorth           = "looking-north"
-    show TkLookingEast            = "looking-east"
-    show TkLookingSouth           = "looking-south"
-    show TkLookingWest            = "looking-west"
-    show TkFound                  = "found"
+    show TkFrontClear             = "TkFrontClear"
+    show TkLeftClear              = "TkLeftClear"
+    show TkRightClear             = "TkRightClear"
+    show TkLookingNorth           = "TkLookingNorth"
+    show TkLookingEast            = "TkLookingEast"
+    show TkLookingSouth           = "TkLookingSouth"
+    show TkLookingWest            = "TkLookingWest"
 
+    show TkFound                  = "TkFound"
     show TkParOpen                = "TkParOpen"
     show TkParClose               = "TkParClose"
-    show TkSemiColon              = "TkSemiColon"
-    show TkCarrying               = "carrying"
+    show TkCarrying               = "TkCarrying"
     show TkInLineComm             = "TkInLineComm"
     show TkLongComm               = "TkLongComm"
-    show TkEndl                   = "TkEndl"
+    show TkEndl                   = "TkEndl";
     show TkCommOpen               = "TkCommOpen"
     show TkCommClose              = "TkCommClose"
-    show TkEOF                    = "TkEOF"
+    show (TkEOF)                  = "TkEOF"
 
     show (TkUndef s)              = "TkUndef: " ++ s
 
-    show (TkInt i)              = show i
+    show (TkInt i)              = "TkInt " ++ show i
 
-    show (TkId s)               = show s
+    show (TkId s)               = "TkId " ++ show s
 
---  Aux functions:
-    --Get the token from a tokpos
-tok :: TokPos -> Token
-tok (t, _, _) = t
-
-    --Get the position from a tokpos
-pos :: TokPos -> (Int, Int)
-pos (_, r, c) = (r, c)
-
-    -- Get the int from a TkInt
-getInt :: Token -> Int
-getInt (TkInt i) = i
-getInt _ = -1
-
-getInt' :: TokPos -> Int
-getInt' (tkint, _, _) = getInt tkint
-
-    -- Get the String from a tkId
-getId :: Token -> String
-getId (TkId s) = s
-getId t        = error "El token recibido no es un tkid: " ++ show t
-
-getId' :: TokPos -> String
-getId' = getId . tok
