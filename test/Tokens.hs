@@ -257,7 +257,7 @@ getInt' (tkint, _, _) = getInt tkint
     -- Get the String from a tkId
 getId :: Token -> String
 getId (TkId s) = s
-getId t        = error "El token recibido no es un tkid: " ++ show t
+getId t        = error $ "El token recibido no es un tkid: "  ++ show t ++ "."
 
 getId' :: TokPos -> String
 getId' = getId . tok

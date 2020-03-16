@@ -42,7 +42,7 @@ data SymbolTable = SymbolTable{
     contextCounter :: Int,
     context        :: Context,
     errors         :: [String]
-}
+} deriving(Show)
 
 -- Enumerator with all the possible contexts
 data Context = NoCon | WorldCon | TaskCon
@@ -55,6 +55,7 @@ data Error = SymRedef{ redefinedSym :: Symbol }
            | InvalidWSize{ invRows :: T.TokPos, invCols :: T.TokPos}
            | RedefWSize{ redefWSPos :: T.TokPos }
            | PlaceOutOfBound{ worldbound :: (Int,Int), objPos :: (Int,Int), plcPos::T.TokPos}
+           | PlaceZeroAt{placeAtZeroPos :: T.TokPos}
            | UndefRef{ undefId :: T.TokPos }
            | InvalidObjType { invOTId :: T.TokPos }
            | CapacityExceeded { excObId :: T.TokPos, excAmnt :: T.TokPos, excPos :: T.TokPos }
@@ -65,6 +66,7 @@ data Error = SymRedef{ redefinedSym :: Symbol }
            | WillyOverWall{ wowPos :: T.TokPos }
            | RedefBaskCapacity{ redefBskPos :: T.TokPos }
            | NullBaskCapacity{ nullbskPos :: T.TokPos }
+           | GoalOutOfBound{ gGivenPos :: (T.TokPos, T.TokPos), gWorldSize :: (Int, Int) }
            | RedefFGoal{ fgPos :: T.TokPos }
            | NoFinalGoal{ fgworldName :: String }
 
@@ -114,6 +116,9 @@ instance Show Error where
                                                 "\n    Posición del objeto: " ++ show objpos ++
                                                 "\nCerca de línea " ++ posToString (T.pos plpos)
 
+    show (PlaceZeroAt pos) = "Willy Context Error: No se pueden posicionar 0 objetos."++  
+                             "\nCerca de línea " ++ posToString (T.pos pos)
+
     show (UndefRef tkid) = "Willy Context Error: Referencia a nombre sin definir."++
                            "\n   Nombre: " ++ T.getId' tkid ++
                            "\nEn " ++ posToString ( T.pos tkid)
@@ -150,11 +155,18 @@ instance Show Error where
                                    "\n    Tamaño dado: " ++ show (T.getInt' pos) ++
                                    "\nCerca de " ++ posToString (T.pos pos)
 
+    show (GoalOutOfBound givpos wsize) = "Willy Context Error: Error en definición de objetivo." ++
+                                         "\n    La posición dada no se encuentra dentro de los límites del mundo." ++
+                                         "\n    Posición dada: " ++ show (T.getInt' . fst $ givpos, T.getInt' . snd $ givpos) ++ 
+                                         "\n    Tamaño del mundo: " ++ show wsize ++
+                                         "\nCerca de " ++ posToString (T.pos $ fst givpos)
+
     show (RedefFGoal pos) = "Willy Context Error: Redefinición de objetivo final" ++
                             "\nEn " ++ posToString (T.pos pos)
 
     show (NoFinalGoal name) = "Willy Context Error: Sin definición de objetivo final." ++
                               "\n   En el mundo nombrado por: \"" ++ name ++ "\"" 
+
 
 -- This function returns a formated string with a position in file
 posToString :: (Int, Int) -> String

@@ -58,7 +58,7 @@ instance Show BoolExpr where
     show (Constant tok) = case tok of
         (TkId s, _, _)        -> "[Var]" ++ s
         (tk, _, _)            -> show tk
-    show (Query qt tn ) = show (tok qt) ++ "(" ++ (getId . tok)  qt ++ ")"
+    show (Query qt tn ) = show (tok qt) ++ "(" ++ (getId . tok)  tn ++ ")"
     show (NotExpr ne)   = "not" ++ show ne
     show (Operation oper op1 op2) = show (tok oper) ++ ":\n  lado izquierdo: " ++ show op1 ++ "\n  lado derecho: " ++ show op2
 
