@@ -186,7 +186,7 @@ analyzer ast = unless (null ast) $ do
                 then addError (ST.PlaceOutOfBound (wsx, wsy) (pxint, pyint) tkid) >> return w
             else if amntInt == 0
                 then addError (ST.PlaceZeroAt amnt) >> return w
-            else return w
+            else return w{ST.placeAt = stmnt:ST.placeAt w}
 
         -- Place In checking 
         addWorldIntr w@ST.World{ST.placeIn = plin, ST.capacity = cap} stmnt@(E.PlaceIn otid amnt) = do

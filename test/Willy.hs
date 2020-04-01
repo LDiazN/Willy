@@ -20,16 +20,24 @@ main = do
     --Intenta recibir input:
     inpt <- getArgs
     case inpt of     
-        (a:_) -> processFile a
-        []    -> do
-                putStr "Nombre del archivo a compilar: "
-                hFlush stdout
-                a <- getLine
-                processFile a
+        [f,t,o]  -> processFile f t o --file, task, options
 
+        []       -> do
+                    putStr "Nombre del archivo a compilar: "
+                    hFlush stdout
+                    a <- getLine
+                    --processFile a
+                    putStr "deprecated"
 
-processFile :: FilePath -> IO()
-processFile f = do
+        _        -> error "Invalid args"
+
+-- Recibe: 
+-- Archivo a abrir -> Nombre de la task a procesar -> opciones
+-- Donde opciones puede ser:
+--      -m / --manual:  ejecución manual
+--      -a / --auto: ejecución automática 
+processFile :: FilePath -> String -> String -> IO()
+processFile f t o = do
     -- Revisa que el archivo exista
     fileExists <- doesFileExist f
 
@@ -40,17 +48,19 @@ processFile f = do
         content <- readFile f
         let tks = L.tokenizer content  -- Resultado del lexer
             tks'= case tks of 
-                    Right t -> t       -- Si todo salió bien, devuelve los tokes recibidos
+                    Right t -> t       -- Si todo salió bien, devuelve los tokens recibidos
                     Left  e -> error e -- Si algo salió mal, devuelve el error del lexer y termina el programa
             ast = P.parseClean $ L.cleanTokens tks' -- El AST asociado al programa willy
             
-
         -- Revisa que el resultado del lexer sea correcto:
         lexOk <- L.displayTokens tks'
 
-        -- Si el análisis léxico salió bien, usa la función especial para esta entrega
-        -- que imprime todo
-        when lexOk $ PT.printAll ast
+        
+        when lexOk $ do 
+            (_, symt) <- CA.analyzeAST ast
+            print symt
+            return ()
+            
             
 
         else putStrLn "Willy Error: El archivo dado no existe"

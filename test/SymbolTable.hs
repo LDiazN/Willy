@@ -6,7 +6,10 @@ module SymbolTable where
 import qualified Expresions as E
 import qualified Tokens as T
 import qualified Data.Map as M
-
+import Data.Typeable
+import Data.List
+import Data.Function
+import Data.Maybe
 -- The possible symbols:
 data SymType = BoolVar  {initVal :: T.TokPos}
              | ObjType  {objColor :: E.WorldStmnt}
@@ -19,6 +22,7 @@ data SymType = BoolVar  {initVal :: T.TokPos}
                     capacity :: [E.WorldStmnt], 
                     finalGoal :: [E.WorldStmnt], 
                     placeIn :: [E.WorldStmnt],
+                    placeAt :: [E.WorldStmnt],
                     wBlockId :: Int
                     } 
              | Task{ exprs :: E.ProgPart, tBlockId :: Int }
@@ -173,6 +177,37 @@ posToString :: (Int, Int) -> String
 posToString pos = "linea: " ++ (show . fst ) pos ++ 
                   ", columna: " ++ (show . snd ) pos
 
+--Aux SynbolTable functions
+-- Given an id and a SymbolTable, returns nothing or the symbol related to such id
+findSymbol :: SymbolTable -> String  -> Maybe Symbol
+findSymbol st@SymbolTable{contextStack = stk, symbolMap = m} name = case M.lookup name m of
+                                                                        Nothing     -> Nothing
+                                                                        Just syms   -> maybeMaxBy (compare `on` symContext) (filter (available stk) syms)
+    where         
+        available :: [Int] -> Symbol -> Bool
+        available xs (Symbol _ _ c _) = foldl (\b a -> c==a || b) False xs
+
+        maybeMaxBy ::  (a -> a -> Ordering) -> [a] -> Maybe a
+        maybeMaxBy f [] = Nothing
+        maybeMaxBy f l = Just $ maximumBy f l
+
+-- Given a symbolTable, an id, returns the symbolTable with the context related to 
+-- this symbol loaded. If the symbol does not exists, returns the same symbol table
+loadTask :: SymbolTable -> String -> SymbolTable
+loadTask st@SymbolTable{contextStack = stk} id = st{contextStack = newstk}
+    where 
+        newstk = case findSymbol st id of
+                    Nothing -> stk
+                    Just sym -> getTbid sym:getTaskWorldbid sym:stk
+        getTbid :: Symbol -> Int
+        getTbid sym
+            | not . isTask . symType $ sym = error $ "The given id is not a valid task: " ++ (show . symId $ sym)
+            | otherwise = tBlockId . symType $ sym
+
+        getTaskWorldbid :: Symbol -> Int
+        getTaskWorldbid sym
+            | not . isTask . symType $ sym = error $ "The given id is not a valid task: " ++ (show . symId $ sym)
+            | otherwise = wBlockId . symType . fromJust . findSymbol st . T.getId' . E.workingWorld . exprs . symType $ sym
 -- aux SymTypes functions:
 --The following functions can tell is the given 
 -- symtype match an specific symtype member
@@ -202,4 +237,4 @@ isObjType _ = False
 
 -- Empty constructor for symtypes
 emptyWorld :: SymType
-emptyWorld = World [] [] [] [] [] [] 0
+emptyWorld = World [] [] [] [] [] [] [] 0

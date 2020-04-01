@@ -22,7 +22,7 @@ begin-task mitask on mimundo
 
     
 
-    if (found(ball)) then move; else move;
+    if (mimundo) then move; else move;
 
     define f1 as 
         define f1 as
