@@ -13,7 +13,7 @@ import Data.Maybe
 data ProcessState = Running | Success | Error deriving(Show, Eq)    --Possible program status
 
 data Item = Item{   symbol  :: ST.Symbol, -- ObjType symbol  
-                    ammount :: Int -- Amount of this object
+                    amount :: Int -- Amount of this object
                     } deriving(Show)
 
 type ItemSet = M.Map String Item  --Set of objects
@@ -26,20 +26,18 @@ data Orientation = North | South | West | East deriving(Show, Eq)
 
 data Willy = Willy{ currPos     :: (Int, Int),      -- (x,y)
                     looking     :: Orientation,     -- Where is willy looking at
-                    basket      :: ItemSet,       -- Map from objectType id to Object
+                    basket      :: ItemSet,         -- Map from objectType id to Object
                     frontClear  :: Bool,
                     leftClear   :: Bool,
                     rightClear  :: Bool
                     } deriving(Show)
 
 data ProgramState = Program{
-                            wMap            :: WorldMap,                    -- Map from world positions to objects
-                            willyStartPos   :: E.WorldStmnt,                --StartAt
+                            worldMap        :: WorldMap,                    -- Map from world positions to objects
                             programState    :: ProcessState,                -- Current program status
                             willy           :: Willy,                       -- Willy object 
-                            vars            :: M.Map String ST.Symbol,      -- map from symbol id to bool var symbol
                             basketCapacity  :: Int,                         -- Total Willy capacity
-                            finalGoal       :: ST.Symbol,                      -- A boolean expresion defining a final goal
+                            finalGoal       :: E.WorldStmnt,                      -- A boolean expresion defining a final goal
                             symbolTable     :: ST.SymbolTable,
                             taskId          :: String,
                             worldId         :: String     
@@ -57,17 +55,14 @@ data RuntimeError = NoSuchTask{ errTaskName :: String }
 --          with such data
 initProgramState :: ST.SymbolTable -> String -> ProgramState
 initProgramState st id = Program{
-                            items           = os,
-                            willyStartPos   = wsp,
-                            programState    = ps,
+                            worldMap        = os,
+                            programState    = Running,
                             willy           = w,
-                            vars            = vs,
-                            basketCapacity  = bc,
-                            finalGoal       = fg,
-                            context         = c,
-                            taskId          = tid,
-                            worldId         = wid,
-                            symbolTable     = newSt
+                            basketCapacity  = T.getInt' . E.capacity . head . ST.capacity . ST.symType $ world,
+                            finalGoal       = head . ST.finalGoal . ST.symType $ world,
+                            symbolTable     = newSt,
+                            taskId          = ST.symId task,
+                            worldId         = worldName
                             } 
     where
         task = case ST.findSymbol st id of
@@ -76,27 +71,40 @@ initProgramState st id = Program{
 
         worldName = T.getId' . E.workingWorld . ST.exprs . ST.symType $ task
 
-        world = case findSymbol st worldName of
+        world = case ST.findSymbol st worldName of
                     Nothing  -> error . show $ NoSuchWorld worldName
                     Just sym -> sym
 
-        newSt = ST.loadTask st $ symId task
+        newSt = ST.loadTask st $ ST.symId task
 
         os = foldl addToObjMap M.empty . ST.placeAt . ST.symType $ world
+
+        w = Willy{
+                    currPos = ( T.getInt' . fst $ stpos , T.getInt' . snd $ stpos ),
+                    looking = tokToOrientation . T.tok . E.initDirection . head . ST.startPos . ST.symType $ world,
+                    basket  = emptySet,
+                    frontClear = True,
+                    leftClear  = True,
+                    rightClear = True
+                }
+
+        stpos = case ST.startPos . ST.symType $ world of
+                    (s:[]) -> E.initPos s
+                    _      -> error "Runtime error: Programa inválido. Definición incorrecta de posición inicial"
+
+
         --Aux
-        addToObjMap :: M.Map (Int, Int) ItemSet -> E.WorldStmnt -> M.Map (Int, Int) ItemSet
+        addToObjMap :: WorldMap -> E.WorldStmnt -> WorldMap
         addToObjMap m placeAt@E.PlaceAt{} = let 
             x      =   T.getInt' . fst . E.place $ placeAt 
             y      =   T.getInt' . snd . E.place $ placeAt 
             objid  =   T.getId'  . E.objectTypeIdAt $ placeAt
-            symobj = case findSymbol newSt objid of 
+            symobj = case ST.findSymbol newSt objid of 
                         Nothing  -> error . show $ NoSuchObjectType objid
                         Just sym -> sym
-            n      =   T.getInt' . E.ammountAt $ symobj
+            n      =    T.getInt' . E.amountAt $ placeAt
             
-            in case M.lookup (x,y) m of
-                Nothing   -> M.insert (x,y) (addItems emptySet symobj n) m
-                Just objs -> M.insert (x,y) (addItems objs symobj n) m
+            in addItemToMap m (x,y) Item{symbol = symobj, amount = n}
         addToObjMap m _ = m
         
 
@@ -115,8 +123,8 @@ removeItems :: ItemSet -> String -> Int -> ItemSet
 removeItems os s n 
     | n == 0 = os
     | isNothing found = os
-    | ammount result < n = M.delete s os
-    | otherwise = M.insert s result{ammount = ammount result - n} os
+    | amount result < n = M.delete s os
+    | otherwise = M.insert s result{amount = amount result - n} os
     where   found = M.lookup s os
             result = fromJust found
 
@@ -126,11 +134,11 @@ addItems :: ItemSet -> ST.Symbol -> Int -> ItemSet
 addItems os s n  
     | n <= 0 = os
     | not (ST.isObjType . ST.symType $ s) = error $ "Error adding object to ItemSet: expected an object-type symbol. Given: " ++ show s
-    | otherwise = M.insert (ST.symId s) Item{ symbol=s, ammount=n } os
+    | otherwise = M.insert (ST.symId s) Item{ symbol=s, amount=n } os
 
 -- Summary add item from an item object
 addItems' :: ItemSet -> Item -> ItemSet
-addItems' os Item{symbol = s, ammount = n} = addItems os s n
+addItems' os Item{symbol = s, amount = n} = addItems os s n
 
 --Summary: Given an object set, an object id s, look up an object with id s 
 -- (in fact this is just an alias for the map lookup)
@@ -145,13 +153,11 @@ getItems = M.elems
 emptySet :: ItemSet
 emptySet = M.empty
 
--------------------------------------
----  End of object set operations ---
--------------------------------------
 
 -------------------------------------
 ------ < Wolrd Map Operations > -----
 -------------------------------------
+
 -- Summary: Add the given object to the map in the given position.
 --          If the object to add is an itemSet, this functions returns the given
 --          map.
@@ -168,6 +174,23 @@ addItemToMap wm p i  = case M.lookup p wm of
                         Nothing                -> M.insert p Items{itemSet = addItems' emptySet i} wm
                         Just Items{itemSet=s}  -> M.insert p Items{itemSet = addItems' s i} wm
                         _                      -> wm
+
+-------------------------------------
+---  End of world map  operations ---
+-------------------------------------
+
+-------------------------------------
+-------- < Misc  Operations > -------
+-------------------------------------
+
+-- Summary: Convert from a token to a orientation:
+tokToOrientation :: T.Token -> Orientation
+tokToOrientation T.TkNorth = North
+tokToOrientation T.TkSouth = South
+tokToOrientation T.TkWest  = West
+tokToOrientation T.TkEast  = East
+tokToOrientation t = error $ "Error en tokToOrientation: Esto no es un token de orientación" ++ show t
+
 
 -------------------------------------
 -------- < Error Messages >  --------
