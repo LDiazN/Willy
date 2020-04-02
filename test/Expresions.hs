@@ -46,7 +46,7 @@ data GoalTest = WillyAt{ willyAtPos :: (TokPos, TokPos) }
 
               deriving(Eq,Show)
 
-data BoolExpr = Constant{ consVal :: TokPos } --A Tkid or a constant boolean  
+data BoolExpr = Constant{ consVal :: TokPos } --A Tkid or a constant boolean like true, false, front-clear... 
               | Query { queryType :: TokPos, targetName :: TokPos } --query type is a TokPos TkFound or TkCarrying, target is a Tkid
               | NotExpr{ notExpr :: BoolExpr }
               | Operation{ operator :: TokPos, operand1 :: BoolExpr, operand2 :: BoolExpr }

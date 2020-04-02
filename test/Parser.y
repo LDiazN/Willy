@@ -160,7 +160,7 @@ import Expresions
                 | ObjectType name of color colorVal ';'       { ObjectType $2 $5 }
                 | Place int of name at pos ';'                { PlaceAt $4 $2 $6 }
                 | Place int of name in basket ';'             { PlaceIn $4 $2 }
-                | Start at pos heading direction ';'          { StartAt $3 $4 }
+                | Start at pos heading direction ';'          { StartAt $3 $5 }
                 | Basket of capacity int ';'                  { BasketCapacity $4 }
                 | Boolean name with initial value boolVal ';' { BooleanVar $2 $6}
                 | Goal name is goalTest ';'                   { Goal $2 $4 }

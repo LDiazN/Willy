@@ -46,7 +46,6 @@ analyzer ast = unless (null ast) $ do
                     -- Since we start a new context, push an empty context table
                     pushEmptyTable
                     st@ST.SymbolTable{ST.contextStack = bid:_} <- get
-                    debugPrintState
                     -- Update state to world context:
                     put st{ST.context = ST.WorldCon}
 
@@ -84,7 +83,6 @@ analyzer ast = unless (null ast) $ do
                     -- pop the world context
                     popContext
                     
-                    debugPrintState
                     -- Add the new created  world
                     void (insertSymbol $ ST.Symbol id fWorldType{ST.wBlockId = bid} 0 (T.pos name))
                     
@@ -105,17 +103,15 @@ analyzer ast = unless (null ast) $ do
             valid <- checkTypeExst ST.isWorld ww
             -- search its context
                 -- if it is valid, then add the context of the world to the current context
-            when  valid $ do
+            when valid $ do
                     st@ST.SymbolTable{ ST.contextStack = stk} <- get 
                     Just ST.Symbol{ ST.symType = ST.World{ST.wBlockId = scont} } <- findSymbol (T.getId' ww)
                     put st{ST.contextStack = scont:stk}
-                    io $ print $ scont:stk
+
 
             --Push the context for the current task
             pushEmptyTable
 
-            io $ putStrLn "[IMPRIMIENDO TASK STATE 1]"
-            debugPrintState
             -- Update the context to task context
             st  <- get
             put st{ST.context = ST.TaskCon} 
@@ -124,16 +120,15 @@ analyzer ast = unless (null ast) $ do
             checkInstructions instrs
 
             popContext -- pop task context
-            popContext -- pop world context
+            -- Pop the world if needed
+            when valid  $ void popContext
 
             -- Update the context to task context
             st  <- get
             put st{ST.context = ST.NoCon} 
             insertSymbol tsym
-            io $ putStrLn "[IMPRIMIENDO TASK STATE 2]"
-            debugPrintState
-            -- Pop the world if needed
-            when valid  $ void popContext
+            return ()
+
 
         -- This function gets a world statement and a world symbol type and 
         -- try to add the given property to the world

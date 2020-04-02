@@ -31,10 +31,10 @@ data SymType = BoolVar  {initVal :: T.TokPos}
 
 -- Symbol type: Useful information about a symbol
 data Symbol = Symbol {
-                symId      :: String,
-                symType    :: SymType,
-                symContext :: Int,
-                symPos     :: (Int,Int)
+                symId      :: String,   --Symbol id
+                symType    :: SymType,  --Aditional data depending on the symboltype
+                symContext :: Int,      --declaration context
+                symPos     :: (Int,Int) --Symbol position in the file
             }
 
             deriving(Show)

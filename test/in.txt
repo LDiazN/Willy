@@ -6,12 +6,13 @@ begin-world mimundo
   Boolean mimundo with initial value  true;
   World 10 10;
   Wall north from 2 2 to 2 3;;
-  Wall south from 2 2 to 2 1;;
+  Wall north from 1 2 to 1 3;;
 
   Object-type ball of color red;
+  Place 10 of ball at 5 5;
+
 
   Goal mygoal is 10 ball objects in Basket;
-  Goal mygoal1 is willy is at  10 10;
 
   Final goal is mygoal;
 
@@ -20,18 +21,8 @@ end-world
 
 begin-task mitask on mimundo
 
-    
-
-    if (mimundo) then move; else move;
-
-    define f1 as 
-        define f1 as
-            move;
-        ;
-    ;
-
-    
-    f1;
-    ;;;;;;;;
+    move;
+    move;
+    move;
 
 end-task
