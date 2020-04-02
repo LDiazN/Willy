@@ -37,7 +37,7 @@ data Symbol = Symbol {
                 symPos     :: (Int,Int) --Symbol position in the file
             }
 
-            deriving(Show)
+            deriving(Show, Eq)
 
 -- SymbolTable type: useful information for context check
 data SymbolTable = SymbolTable{
@@ -177,7 +177,7 @@ posToString :: (Int, Int) -> String
 posToString pos = "linea: " ++ (show . fst ) pos ++ 
                   ", columna: " ++ (show . snd ) pos
 
---Aux SynbolTable functions
+--Aux SymbolTable functions
 -- Given an id and a SymbolTable, returns nothing or the symbol related to such id
 findSymbol :: SymbolTable -> String  -> Maybe Symbol
 findSymbol st@SymbolTable{contextStack = stk, symbolMap = m} name = case M.lookup name m of
@@ -190,6 +190,35 @@ findSymbol st@SymbolTable{contextStack = stk, symbolMap = m} name = case M.looku
         maybeMaxBy ::  (a -> a -> Ordering) -> [a] -> Maybe a
         maybeMaxBy f [] = Nothing
         maybeMaxBy f l = Just $ maximumBy f l
+
+-- Set the current val of a boolean variable to the given one
+setVal :: SymbolTable -> String -> Bool -> SymbolTable
+setVal st id b = st{symbolMap=newSymMap}
+    where
+        newVal = (T.boolToTok b, 0,0)
+
+        symMap = symbolMap st
+
+        sym = case findSymbol st id of
+                    Just s@Symbol{symType=BoolVar{}} -> s
+
+                    _ -> error $ "Error: esta variable no está disponible en este contexto o no es booleana." ++
+                                "\n Variable: " ++ id
+
+        newSym = sym{symType = BoolVar{initVal=newVal}}
+
+        newList = case M.lookup id symMap of
+                    Nothing -> error $ "Error: Este símbolo no existe en la tabla: " ++ id
+                    Just l  -> replace sym newSym l
+
+        newSymMap = M.insert id newList symMap
+
+        --Aux: replace first occurence of an item in the list
+        replace :: (Eq a) => a -> a -> [a] -> [a]
+        replace _ _ [] = []
+        replace a1 a2 (x:xs) 
+            | a1==x     = a2:xs
+            | otherwise = a1:replace a1 a2 xs
 
 -- Given a symbolTable, an id, returns the symbolTable with the context related to 
 -- this symbol loaded. If the symbol does not exists, returns the same symbol table

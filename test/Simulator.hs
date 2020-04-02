@@ -50,12 +50,48 @@ printSensors :: PS.ProgramState -> IO ()
 printSensors ps = 
     let
         w = PS.willy ps
-        (left, front, right) = (PS.leftClear w, PS.frontClear w, PS.leftClear w)
+        (left, front, right) = (PS.leftClear w, PS.frontClear w, PS.rightClear w)
 
     in putStrLn $ "left-clear: " ++ show left ++
                   " | front-clear: " ++ show front ++
                   " | right-clear: " ++ show right
 
+-- Summary: Print the willy basket
+printBasket :: PS.ProgramState -> IO()
+printBasket ps = 
+    let
+        header = "[CESTA DE WILLY]"
+        baskElems = M.elems . PS.basket . PS.willy $ ps
+        --Aux: return a formated item
+        printItem :: PS.Item -> String
+        printItem PS.Item{PS.symbol=sym,PS.amount=n} = "  -" ++ ST.symId sym ++
+                                                       ": " ++ show n
+        elemList = if null baskElems
+                        then "  <cesta vacía>"
+                        else unlines . map printItem $ baskElems
+    in putStrLn header >>  putStrLn elemList 
+
+-- Summary: Print the objects in the world
+printItems :: PS.ProgramState -> IO()
+printItems ps = 
+    let 
+        wmIts = filter (\(k,v) -> isItem v) . M.toList . PS.worldMap $ ps
+
+        posToLists = map (\(k, its) -> (k,M.toList . PS.itemSet $ its)) wmIts
+
+        --aux: Tells if an object in the map it's an item set:
+        isItem :: PS.Object -> Bool 
+        isItem PS.Items{} = True
+        isItem _ = False
+    in print posToLists
+
+
 -- Summary: Print all the program data
 printAll :: PS.ProgramState -> IO()
-printAll ps = printWorldMap ps >> printSensors ps
+printAll ps = do 
+    printWorldMap ps
+    printSensors ps 
+    printBasket ps 
+    printItems ps
+
+    putStrLn "------------------------------"

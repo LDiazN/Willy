@@ -52,6 +52,11 @@ data RuntimeError = NoSuchTask{ errTaskName :: String }
                   | NoSuchWorld{ errWorldName :: String }
                   | NoSuchObjectType{errObjTypeId :: String}
                   | WallInFront{ errWallPos :: (Int,Int) }
+                  | BasketCapacityExceeded {errCap :: Int, errAdd :: Int, errUsedSpace :: Int}
+                  | InvalidObjectId{errObjId :: String }
+                  | NoSuchObjectCurrPos{errObjTk :: T.TokPos, errCurrPos :: (Int,Int)}
+                  | NoSuchObjInBasket {errObjTkBask :: T.TokPos}
+                  | NoSuchBoolVar{errBoolVar :: T.TokPos}
 
 ---------------------------------------
 ---- < Helper program operations > ----
@@ -152,7 +157,7 @@ removeItems :: ItemSet -> String -> Int -> ItemSet
 removeItems os s n 
     | n == 0 = os
     | isNothing found = os
-    | amount result < n = M.delete s os
+    | amount result <= n = M.delete s os
     | otherwise = M.insert s result{amount = amount result - n} os
     where   found = M.lookup s os
             result = fromJust found
@@ -163,7 +168,9 @@ addItems :: ItemSet -> ST.Symbol -> Int -> ItemSet
 addItems os s n  
     | n <= 0 = os
     | not (ST.isObjType . ST.symType $ s) = error $ "Error adding object to ItemSet: expected an object-type symbol. Given: " ++ show s
-    | otherwise = M.insert (ST.symId s) Item{ symbol=s, amount=n } os
+    | otherwise = case getItem os (ST.symId s) of
+                    Nothing -> M.insert (ST.symId s) Item{ symbol=s, amount=n } os
+                    Just Item{amount=n'} -> M.insert (ST.symId s) Item{ symbol=s, amount=n+n'} os
 
 -- Summary add item from an item object
 addItems' :: ItemSet -> Item -> ItemSet
@@ -182,9 +189,26 @@ getItems = M.elems
 emptySet :: ItemSet
 emptySet = M.empty
 
+--Summary: get the total number of items in willy's basket
+elemsInItemSet :: ItemSet -> Int
+elemsInItemSet  = foldl (\acc it -> acc + amount it) 0 . M.elems 
 
+--Summary: try to add n of id to the willy basket
+addToBasket :: ProgramState -> Int -> String -> ProgramState
+addToBasket ps n id 
+    | n + usedSpace > bsize = error . show $ BasketCapacityExceeded bsize n usedSpace
+    | isNothing sym  || (not . ST.isObjType . ST.symType . fromJust $ sym) = error . show $ InvalidObjectId id
+    | otherwise = ps{willy=newW}
+    where 
+        usedSpace = elemsInItemSet . basket . willy $ ps
+        bsize     = basketCapacity ps
+        st        = symbolTable ps 
+        sym       = ST.findSymbol st id 
+        w         = willy ps
+        newW      = w{basket = addItems (basket w) (fromJust sym) n}
+        
 -------------------------------------
------- < Wolrd Map Operations > -----
+------ < World Map Operations > -----
 -------------------------------------
 
 -- Summary: Add the given object to the map in the given position.
@@ -203,6 +227,18 @@ addItemToMap wm p i  = case M.lookup p wm of
                         Nothing                -> M.insert p Items{itemSet = addItems' emptySet i} wm
                         Just Items{itemSet=s}  -> M.insert p Items{itemSet = addItems' s i} wm
                         _                      -> wm
+
+-- Summary: remove n of the given item by its id in the map in the given position. 
+--          If that position contains something different to an item set
+--          ignore the given item
+removeItemFromMap :: WorldMap -> (Int, Int) -> String -> Int -> WorldMap
+removeItemFromMap wm p s n = newWM
+    where   newItSet = case M.lookup p wm of
+                        Just Items{itemSet=is} -> removeItems is s n
+                        _   -> emptySet
+            newWM  = if elemsInItemSet newItSet == 0
+                        then M.delete p wm
+                        else M.insert p Items{itemSet=newItSet} wm
 
 -- Summary: Add a wall to the map
 addWallToMap :: WorldMap -> E.WorldStmnt -> WorldMap
@@ -243,13 +279,15 @@ updateWillySensors ps =
         (x,y) = currPos w
         dir = looking w
         wm = worldMap ps
+        (wsx, wsy) = worldSize ps
         isFree :: (Int,Int) -> Bool
-        isFree = positionFree wm
+        isFree p@(x',y') = positionFree wm p && (x' <= wsx && y' <= wsy && x' >= 1 && y' >= 1)
+
         (left,front,right) = case dir of 
-                                North -> (isFree (x-1,y), isFree (x,y + 1), isFree (x+1,y))
-                                South -> (isFree (x+1,y), isFree (x,y - 1), isFree (x-1,y))
-                                East  -> (isFree (x,y-1), isFree (x-1,y), isFree (x,y+1))
-                                West  -> (isFree (x,y+1), isFree (x+1,y), isFree (x,y-1))
+                                North -> (isFree (x-1,y), isFree (x,y+1), isFree (x+1,y))
+                                South -> (isFree (x+1,y), isFree (x,y-1), isFree (x-1,y))
+                                West  -> (isFree (x,y-1), isFree (x-1,y), isFree (x,y+1))
+                                East  -> (isFree (x,y+1), isFree (x+1,y), isFree (x,y-1))
     in ps{willy = w{frontClear=front, leftClear=left, rightClear=right}}
 
 -- Summary: test a world boolean goal
@@ -339,13 +377,79 @@ checkBoolExpr ps E.Operation{E.operator = op, E.operand1 = oprn1, E.operand2 = o
         T.TkOr  -> lbool || rbool
         e       -> error $ "Error checking a boolean expr: This is not an operator: " ++ show e
 
+-- Summary: turn willy to look at the given direction
+lookAt :: ProgramState -> Orientation -> ProgramState
+lookAt ps or = let w = willy ps in ps{willy=w{looking=or}}
+lookAt' :: ProgramState -> T.Token -> ProgramState
+lookAt' ps = lookAt ps . tokToOrientation 
+
+-- Summary: rotate willy to the left
+turnLeft :: ProgramState -> ProgramState
+turnLeft ps = case looking . willy $ ps of
+                North -> lookAt ps West
+                South -> lookAt ps East
+                East  -> lookAt ps North
+                West  -> lookAt ps South
+
+-- Summary: rotate willy to the right
+turnRight :: ProgramState -> ProgramState
+turnRight ps = case looking . willy $ ps of
+                North -> lookAt ps East
+                South -> lookAt ps West
+                East  -> lookAt ps South
+                West  -> lookAt ps North
+
+--Summary: Set to The given boolean value the variable named by the given 
+--         id (or explodes if it is not a bool var) in the current programState
+setBoolVar :: String -> Bool -> ProgramState -> ProgramState
+setBoolVar id b ps = ps{symbolTable = newSt}
+    where
+        st = symbolTable ps 
+        newSt = ST.setVal st id b 
 
 
 -------------------------------------
 -------- < Error Messages >  --------
 -------------------------------------
+
+-- This function returns a formated string with a position in file
+posToString :: (Int, Int) -> String
+posToString pos = "linea: " ++ (show . fst ) pos ++ 
+                  ", columna: " ++ (show . snd ) pos
+
 instance Show RuntimeError where
     show NoSuchTask{ errTaskName = s }      = "Willy runtime error: No existe una tarea con el nombre dado: " ++ s
+
     show NoSuchWorld{ errWorldName = s }    = "Willy runtime error: No existe un mundo con el nombre dado: " ++ s
+
     show NoSuchObjectType{errObjTypeId = s} = "Willy runtime error: No existe un objeto con el nombre dado: " ++ s
+
     show WallInFront{ errWallPos = p }      = "Willy runtime error: Willy intentó caminar hacia un muro en: " ++ show p
+
+    show BasketCapacityExceeded{errCap = c, 
+                                errAdd = a,
+                                errUsedSpace = u
+                                } = "Willy runtime error: Añadiendo muchos elementos a la cesta." ++ 
+                                    "\n capacidad de la cesta: " ++ show c ++
+                                    "\n Capacidad utilizada: " ++ show u ++
+                                    "\n Cantidad añadida: " ++ show a
+
+    show InvalidObjectId{errObjId = s} = "Willy runtime error: El nombre dado no coincide con ningún objeto " ++
+                                         "válido en este contexto." ++
+                                         "\n nombre: " ++ s
+
+    show NoSuchObjectCurrPos{errObjTk = tk, 
+                             errCurrPos = c} ="Willy runtime error: No existe este objeto en la casilla actual." ++
+                                              "\n Objeto: " ++ T.getId' tk ++
+                                              "\n Casilla Actual: " ++ show c ++
+                                              "\n Cerca de " ++ (posToString . T.pos $ tk)
+
+    show NoSuchObjInBasket{
+                        errObjTkBask=objtk} = "Willy runtime error: No existe este objeto en la cesta actualmente." ++
+                                              "\n Objeto: " ++ T.getId' objtk ++
+                                              "\n Cerca de " ++ (posToString . T.pos $ objtk)
+
+    show NoSuchBoolVar{
+                        errBoolVar=objtk} = "Willy runtime error: Esto no es una variable booleana válida." ++
+                                              "\n nombre: " ++ T.getId' objtk ++
+                                              "\n Cerca de " ++ (posToString . T.pos $ objtk)

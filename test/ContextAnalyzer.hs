@@ -354,7 +354,7 @@ analyzer ast = unless (null ast) $ do
         checkInstruction (E.Drop oid) = void $ checkTypeExst ST.isObjType oid
 
         -- check set
-        checkInstruction (E.SetOper _ oid) = void $ checkTypeExst ST.isBool oid
+        checkInstruction (E.SetOper oid _) = void $ checkTypeExst ST.isBool oid
 
         -- check Clear
         checkInstruction (E.ClearOper _ oid) = void $ checkTypeExst ST.isBool oid

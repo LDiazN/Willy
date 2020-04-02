@@ -29,7 +29,7 @@ data TaskStmnt = IfCondition{ ifCondition :: BoolExpr, succInstruction :: TaskSt
                | Move       { tokenMove :: TokPos }
                | TurnLeft   { tokenTLeft :: TokPos }
                | TurnRight  { tokenTRight :: TokPos }
-               | Pick       { pickObj :: TokPos }  --
+               | Pick       { pickObj :: TokPos }  
                | Drop       { dropObj :: TokPos }
                | SetOper    { varToSet :: TokPos, boolVar :: TokPos }
                | ClearOper  { clearPos :: TokPos, varToClear :: TokPos }

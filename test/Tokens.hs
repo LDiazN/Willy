@@ -261,3 +261,11 @@ getId t        = error $ "El token recibido no es un tkid: "  ++ show t ++ "."
 
 getId' :: TokPos -> String
 getId' = getId . tok
+
+tokToBool :: Token -> Bool
+tokToBool TkTrue = True
+tokToBool TkFalse = False
+tokToBool e = error $ "This is not a bool token: " ++ show e
+
+boolToTok :: Bool -> Token
+boolToTok b = if b then TkTrue else TkFalse

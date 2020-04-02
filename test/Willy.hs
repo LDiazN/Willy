@@ -9,6 +9,9 @@ import qualified Expresions as E
 import qualified ContextAnalyzer as CA
 import qualified SymbolTable as ST
 import qualified PrintTools as PT
+import qualified Simulator as S
+import qualified Interpreter as I
+import qualified ProgramState as PS
 import System.IO
 import System.Environment
 import System.Directory
@@ -58,8 +61,8 @@ processFile f t o = do
         
         when lexOk $ do 
             (_, symt) <- CA.analyzeAST ast
-            print symt
-            return ()
+            I.runProgram symt t S.printAll
+            putStrLn "Testing"
             
             
 
