@@ -120,11 +120,11 @@ printVars ps = putStr str
 -- Summary: Print all the program data
 printAll :: PS.ProgramState -> IO()
 printAll ps = do 
-    printWorldMap ps
     printSensors ps 
     printBasket ps 
     printItems ps
     printVars ps
+    printWorldMap ps
     putStrLn "------------------------------"
 
 -- Summary: Print the program state data after n seconds

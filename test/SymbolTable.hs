@@ -243,9 +243,7 @@ pushBid :: SymbolTable -> Int -> SymbolTable
 pushBid st bid = newst
     where stk = contextStack st
           newStk = bid:stk
-          newst = if (not . null $ stk) && head stk == bid
-                    then st
-                    else st{contextStack = newStk}
+          newst = st{contextStack = newStk}
               
 
 --Given a symbol table, pop the current context

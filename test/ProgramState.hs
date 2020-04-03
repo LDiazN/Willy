@@ -96,11 +96,13 @@ initProgramState st id = updateWillySensors Program{
         w = Willy{
                     currPos = ( T.getInt' . fst $ stpos , T.getInt' . snd $ stpos ),
                     looking = tokToOrientation . T.tok . E.initDirection . head . ST.startPos . ST.symType $ world,
-                    basket  = emptySet,
+                    basket  = wBask,
                     frontClear = True,
                     leftClear  = True,
                     rightClear = True
                 }
+
+        wBask = foldl addItemsToBask emptySet (ST.placeIn . ST.symType $ world)
 
         stpos = case ST.startPos . ST.symType $ world of
                     (s:[]) -> E.initPos s
@@ -125,6 +127,16 @@ initProgramState st id = updateWillySensors Program{
         addWallsToMap :: WorldMap -> [E.WorldStmnt] -> WorldMap
         addWallsToMap  = foldl addWallToMap 
         
+        addItemsToBask :: ItemSet -> E.WorldStmnt -> ItemSet
+        addItemsToBask is E.PlaceIn{E.objectTypeIdIn = tkid, E.amountIn=tkn} = 
+            let 
+                id = T.getId' tkid
+                n = T.getInt' tkn
+                maybeSym = ST.findSymbol newSt id
+            in 
+                case maybeSym of
+                    Nothing  -> error "Bug: Un símbolo que pasó el análisis estático no se consigue"
+                    Just sym -> addItems is sym n 
 -- Summary: Walk one unit
 walk :: ProgramState -> ProgramState
 walk ps = 
