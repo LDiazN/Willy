@@ -80,6 +80,6 @@ instance Show TaskStmnt where
                                   "  condicion:\n" ++
                                    unlines ( map ("    " ++ ) (lines $ show be) )
     show (FuncCall  fn) = "LLAMADA A FUNCION:\n  " ++ (getId . tok $ fn)
-    show (BeginEnd _ _) = "BLOQUE DE INSTRUCCIONES:"
+    show (BeginEnd _ b) = show b
     
     show _ = "what"

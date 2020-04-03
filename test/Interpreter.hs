@@ -177,13 +177,12 @@ runProgram' f = do
                         Nothing -> error . show $ PS.NoSuchFunc fid
             
             put $ ps{PS.symbolTable = ST.pushBid st context}                --load the function context
+            ps' <- get                                                      --Get the resulting state
+
             runInst instrs                                                  --Run the function body
             ps' <- get                                                      --Get the resulting state
             put $ ps'{PS.symbolTable = ST.popContext . PS.symbolTable $ ps'}--Pop the previously loaded context
-            --DEBUG
-            ps <- get
-            io . print . ST.contextStack . PS.symbolTable $ ps
-            return ()
+            
         
         runInst E.Terminate{} = do
             ps <- get

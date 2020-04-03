@@ -327,7 +327,7 @@ analyzer ast = unless (null ast) $ do
             return ()
         
         --Check the begin instruction:
-        checkInstruction (E.BeginEnd _ instrs) = void (pushEmptyTable >> checkInstructions instrs >> popContext)
+        checkInstruction (E.BeginEnd _ instrs) = void (checkInstructions instrs)
         
         --Check the define instruction:
         checkInstruction (E.DefineFunc fname finst) = do
