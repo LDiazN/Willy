@@ -36,9 +36,9 @@ printWorldMap ps =
                               else '<'
 
             | otherwise = case M.lookup p wm of
-                            Nothing                 -> '+'
-                            (Just PS.Wall)          -> '|'
-                            (Just PS.Items{})       -> 'i'
+                            Nothing                        -> '+'
+                            (Just PS.Wall)                 -> '|'
+                            (Just PS.Items{PS.itemSet=is}) -> head . head . M.keys $ is
 
         interpose :: a -> [a] -> [a]
         interpose _ [] = []

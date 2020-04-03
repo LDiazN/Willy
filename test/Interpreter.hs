@@ -96,7 +96,7 @@ runProgram' f = do
                 newbsk = PS.removeItems wbsk oid 1
                 maybeItem = PS.getItem wbsk oid
                 wm = PS.worldMap ps
-                newWm = PS.addItemToMap wm (PS.currPos w) (fromJust maybeItem)
+                newWm = PS.addItemToMap wm (PS.currPos w) (fromJust maybeItem){PS.amount=1}
                 newPs = case maybeItem of
                             Nothing -> error . show $ PS.NoSuchObjInBasket dobj
                             Just PS.Item{PS.amount = n} -> if n == 0
