@@ -10,7 +10,7 @@ import qualified Data.Map as M
 import Data.Maybe
 
 
-data ProcessState = Running | Success | Error | Failure deriving(Show, Eq)    --Possible program status
+data ProcessState = Running | Error | End deriving(Show, Eq)    --Possible program status
 
 data Item = Item{   symbol  :: ST.Symbol, -- ObjType symbol  
                     amount :: Int -- Amount of this object

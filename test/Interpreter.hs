@@ -26,8 +26,17 @@ runProgram' f = do
     ps@PS.Program{PS.instrs=instrs} <- get
 
     io $ f ps
+    mapM_ runInst instrs
 
-    unless (null instrs) $  mapM_ runInst instrs
+    newps <- get 
+    case PS.programState newps of 
+
+        PS.Error   -> io $ putStrLn "Error durante la ejecución de la tarea."
+        
+        _       ->  if PS.checkBoolExpr newps . E.finalGoal . PS.finalGoal $ newps
+                        then io $ putStrLn "Ejecución exitosa: Willy alcazó el objetivo final."    
+                        else io $ putStrLn "Ejecución fracasada: Willy no alcanzó el objetivo final."
+        
                             --foldl (\b a -> b >> runInst a) (runInst . head $ instrs) $ tail instrs
     
     where 
@@ -35,6 +44,7 @@ runProgram' f = do
         -- Run move
         runInst E.Move{} = do
             ps <- get
+            unless (PS.programState ps==PS.End) $ do
             let newps = PS.updateWillySensors . PS.walk $ ps 
             io $ f newps
             put newps
@@ -42,6 +52,7 @@ runProgram' f = do
         -- Run Turn Left
         runInst E.TurnLeft{} = do
             ps <- get
+            unless (PS.programState ps==PS.End) $ do
             let newps = PS.updateWillySensors . PS.turnLeft $ ps 
             io $ f newps
             put newps
@@ -49,6 +60,7 @@ runProgram' f = do
         -- Run Turn right
         runInst E.TurnRight{} = do
             ps <- get
+            unless (PS.programState ps==PS.End) $ do
             let newps = PS.updateWillySensors . PS.turnRight $ ps 
             io $ f newps
             put newps
@@ -56,6 +68,7 @@ runProgram' f = do
         -- Run pick operation:
         runInst E.Pick{E.pickObj = pobj} = do
             ps <- get
+            unless (PS.programState ps==PS.End) $ do
             let w = PS.willy ps
                 wm = PS.worldMap ps
                 oid = T.getId' pobj
@@ -76,6 +89,7 @@ runProgram' f = do
         -- Run drop
         runInst E.Drop{E.dropObj=dobj} = do
             ps <- get
+            unless (PS.programState ps==PS.End) $ do
             let oid  = T.getId' dobj
                 w    = PS.willy ps
                 wbsk = PS.basket w
@@ -95,6 +109,7 @@ runProgram' f = do
         -- Run set var
         runInst E.SetOper{E.varToSet = tkid, E.boolVar=tkb} = do
             ps <- get
+            unless (PS.programState ps==PS.End) $ do
             --io $ putStrLn "not in interpreter"
             let 
                 b = T.tokToBool . T.tok $ tkb   --Get the boolean val
@@ -104,11 +119,15 @@ runProgram' f = do
             put newPs
 
         -- Run clear var
-        runInst E.ClearOper{E.varToClear = vtc} = runInst E.SetOper{E.varToSet = vtc, E.boolVar=(T.TkFalse,0,0)}
+        runInst E.ClearOper{E.varToClear = vtc} = do
+            ps <- get
+            unless (PS.programState ps==PS.End) $
+                runInst E.SetOper{E.varToSet = vtc, E.boolVar=(T.TkFalse,0,0)}
 
         --Run Flip Oper 
         runInst E.FlipOper{E.varToFlip = vtf} = do
             ps <- get
+            unless (PS.programState ps==PS.End) $ do
             let 
                 id = T.getId' vtf
                 boolVar =  case flip ST.findSymbol id . PS.symbolTable $ ps of
@@ -121,27 +140,34 @@ runProgram' f = do
         --Run if oper
         runInst E.IfCondition{ E.ifCondition=bexpr, E.succInstruction = si, E.failInstruction = fi} = do
             ps <- get
-
-            if PS.checkBoolExpr ps bexpr
-                then runInst si
-                else runInst fi
+            unless (PS.programState ps==PS.End) $ 
+                if PS.checkBoolExpr ps bexpr
+                    then runInst si
+                    else runInst fi
 
         --Run repeat 
         runInst E.Repeat{E.repeatTimes = tkn, E.repInstruction = inst} = do
-            let n = T.getInt' tkn
-            replicateM_ n (runInst inst)
+            ps <- get 
+            unless (PS.programState ps==PS.End) $ do
+                let n = T.getInt' tkn
+                replicateM_ n (runInst inst)
 
         --Run while
         runInst w@E.WhileCond{E.whileCondition = wc, E.whileIntruct = wi} = do
             ps <- get
+            unless (PS.programState ps==PS.End) $ do
             when (PS.checkBoolExpr ps wc) $ runInst wi >> runInst w
 
         --Run BeginEnd
-        runInst E.BeginEnd{E.beginIntructs = insts} = mapM_ runInst insts
+        runInst E.BeginEnd{E.beginIntructs = insts} = do
+            ps <- get
+            unless (PS.programState ps==PS.End) $
+                mapM_ runInst insts
 
         --Run function call
         runInst E.FuncCall{E.funcId = fid} = do
             ps <- get
+            unless (PS.programState ps==PS.End) $ do
             let
                 id = T.getId' fid
                 st = PS.symbolTable ps
@@ -159,6 +185,11 @@ runProgram' f = do
             io . print . ST.contextStack . PS.symbolTable $ ps
             return ()
         
+        runInst E.Terminate{} = do
+            ps <- get
+            unless (PS.programState ps==PS.End) $
+                put ps{PS.programState = PS.End}
+
         runInst _ = return()
 
         
