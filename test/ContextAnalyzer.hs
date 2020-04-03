@@ -23,7 +23,7 @@ analyzeAST :: E.AST -> IO ((), ContextState)
 analyzeAST ast = runStateT (analyzer ast) (ST.SymbolTable M.empty [0] 1 ST.NoCon []) 
 
 -- Analyze the given ast 
-analyzer :: E.AST -> RetState ()
+analyzer :: E.AST -> RetState()
 analyzer ast = unless (null ast) $ do
             --process all progparts:
             
@@ -31,6 +31,7 @@ analyzer ast = unless (null ast) $ do
             
             -- Check for errors
             ST.SymbolTable{ST.errors =  e}  <- get
+
             -- print Errors if needed
             unless (null e) $ io (mapM_ (putStrLn . (++ "\n")) (reverse e) >> return ())
 
@@ -283,7 +284,7 @@ analyzer ast = unless (null ast) $ do
         checkInstruction (E.FuncCall fname) = void (checkTypeExst ST.isDef fname)
 
         -- Check an if block
-        checkInstruction (E.IfCondition ifCond sins fins) = do
+        checkInstruction (E.IfCondition ifCond sins fins _) = do
             -- Create a new context for the if block
             pushEmptyTable
 
@@ -299,7 +300,7 @@ analyzer ast = unless (null ast) $ do
             return ()
 
         -- Check a while block
-        checkInstruction (E.WhileCond wCond inst ) = do
+        checkInstruction (E.WhileCond wCond inst _) = do
             
             -- Create a new context for the if block
             pushEmptyTable
@@ -314,7 +315,7 @@ analyzer ast = unless (null ast) $ do
             return ()
 
         --Check the repeat instruction
-        checkInstruction (E.Repeat _ inst) = do
+        checkInstruction (E.Repeat _ inst _) = do
             
             -- Create a new context for the if block
             pushEmptyTable
@@ -606,3 +607,4 @@ debugPrintState :: RetState ()
 debugPrintState = do
     st <- get
     io $ print st
+

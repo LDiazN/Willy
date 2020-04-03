@@ -17,30 +17,52 @@ import System.Environment
 import System.Directory
 import Control.Monad
 
+
+--Para usar el interpretador de willy:
+-- ./Willy [nombre del archivo] [nombre de task] [options]
+-- donde los tres son obligatorios y options puede tener los siguientes 
+-- valores: 
+-- -m/--manual: Realiza la ejecución paso a paso
+-- -a/--auto [segundos]*: realiza la ejecución cada [segundos]. Si no se especifica
+--                        un valor para [segundos], entonces es ejecución instantánea
+
 main :: IO()
 main = do
     
     --Intenta recibir input:
     inpt <- getArgs
+    print inpt
     case inpt of     
-        [f,t,o]  -> processFile f t o --file, task, options
+        [f,t,o]   -> let cbf = case o of --cbf: callback function
+                                "-a"        -> S.printAll
+                                "--auto"    -> S.printAll
+                                "-m"        -> S.printNContinue
+                                "--manual"  -> S.printNContinue
+                                a           -> error $ "opción inválida: " ++ show a
 
-        []       -> do
-                    putStr "Nombre del archivo a compilar: "
-                    hFlush stdout
-                    a <- getLine
-                    --processFile a
-                    putStr "deprecated"
+                     in if o /= "-m" && o /= "-a" && o /= "--manual" && o /= "--auto"
+                            then putStrLn $ "Error: opciones inválidas. Opciones válidas: \n" ++
+                                            "  -a/--auto [num]\n" ++ 
+                                            "  -m/--manual"
+                            else processFile f t cbf
 
-        _        -> error "Invalid args"
+
+
+        [f,t,o,n] ->  if o/= "-a" && o/="--auto"
+                        then putStrLn "Error: demasiados argumentos"
+                        else  processFile f t $ S.printNWait ((read . init . init . show $ (read n::Float)*1000000)::Int)
+
+        _         -> putStrLn $ "Error: formato de entrada incorrecto. Para correr un programa de Willy" ++
+                                " utilizar: \n" ++
+                                "  ./Willy [nombre de archivo] [nombre de task] [opciones]"
 
 -- Recibe: 
 -- Archivo a abrir -> Nombre de la task a procesar -> opciones
 -- Donde opciones puede ser:
 --      -m / --manual:  ejecución manual
 --      -a / --auto: ejecución automática 
-processFile :: FilePath -> String -> String -> IO()
-processFile f t o = do
+processFile :: FilePath -> String -> (PS.ProgramState -> IO()) -> IO()
+processFile f t cbf = do
     -- Revisa que el archivo exista
     fileExists <- doesFileExist f
 
@@ -61,8 +83,9 @@ processFile f t o = do
         
         when lexOk $ do 
             (_, symt) <- CA.analyzeAST ast
-            I.runProgram symt t S.printAll
-            putStrLn "Testing"
+            when (null . ST.errors $ symt ) $
+                void $ I.runProgram symt t cbf
+                
             
             
 

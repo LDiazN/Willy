@@ -8,6 +8,8 @@ import qualified SymbolTable as ST
 import qualified ProgramState as PS
 import qualified Interpreter as I
 import qualified Data.Map as M
+import Control.Concurrent
+
 import Data.List
 -- Summary: Simple function that shows a program state
 printState :: PS.ProgramState -> IO()
@@ -115,7 +117,6 @@ printVars ps = putStr str
         flat ([]:xs') = flat xs'
 
 
-
 -- Summary: Print all the program data
 printAll :: PS.ProgramState -> IO()
 printAll ps = do 
@@ -125,6 +126,18 @@ printAll ps = do
     printItems ps
     printVars ps
     putStrLn "------------------------------"
+
+-- Summary: Print the program state data after n seconds
+printNWait :: Int -> PS.ProgramState -> IO()
+printNWait n ps = printAll ps >> threadDelay n
+
+-- Summary: Print and ask for continue
+printNContinue :: PS.ProgramState -> IO()
+printNContinue ps = do 
+    printAll ps 
+    putStrLn "presiona enter para continuar" 
+    getLine 
+    return ()
 
 --aux function:
 printItem :: PS.Item -> String

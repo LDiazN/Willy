@@ -181,10 +181,10 @@ import Expresions
 
     task_stmt   :: { TaskStmnt }
                 -- Control --
-    task_stmt   : if boolExpr then task_stmt                  { IfCondition $2 $4 Skip }
-                | if boolExpr then task_stmt else task_stmt   { IfCondition $2 $4 $6 }
-                | repeat int times task_stmt                  { Repeat $2 $4 }
-                | while boolExpr do task_stmt                 { WhileCond $2 $4 }
+    task_stmt   : if boolExpr then task_stmt                  { IfCondition $2 $4 Skip 0 }
+                | if boolExpr then task_stmt else task_stmt   { IfCondition $2 $4 $6 0}
+                | repeat int times task_stmt                  { Repeat $2 $4 0}
+                | while boolExpr do task_stmt                 { WhileCond $2 $4 0}
                 | begin end                                   { BeginEnd $1 [] }
                 | begin task_stmts end                        { BeginEnd $1 $ reverse $2 }
                 | define name as task_stmt                    { DefineFunc $2 $4 }

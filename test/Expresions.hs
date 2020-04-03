@@ -21,9 +21,13 @@ data WorldStmnt = Wall{direction :: TokPos, from :: (TokPos, TokPos), to :: (Tok
 
                 deriving(Eq, Show)
                 
-data TaskStmnt = IfCondition{ ifCondition :: BoolExpr, succInstruction :: TaskStmnt, failInstruction :: TaskStmnt } 
-               | Repeat     { repeatTimes :: TokPos, repInstruction :: TaskStmnt }                                  
-               | WhileCond  { whileCondition :: BoolExpr, whileIntruct :: TaskStmnt }                              
+data TaskStmnt = IfCondition{   ifCondition :: BoolExpr, 
+                                succInstruction :: TaskStmnt, 
+                                failInstruction :: TaskStmnt,
+                                ibid :: Int
+                            } 
+               | Repeat     { repeatTimes :: TokPos, repInstruction :: TaskStmnt, rbid :: Int }                                  
+               | WhileCond  { whileCondition :: BoolExpr, whileIntruct :: TaskStmnt, wbid :: Int }                              
                | BeginEnd   { beginPos :: TokPos, beginIntructs :: [TaskStmnt] }                                    
                | DefineFunc { funcName :: TokPos, funcInstruct :: TaskStmnt }                                       
                | Move       { tokenMove :: TokPos }
@@ -72,14 +76,39 @@ instance Show TaskStmnt where
     show (SetOper (t, _, _) (b, _, _)) = "Set " ++ show t ++ show b
     show (ClearOper _ (b, _, _)) = "Set " ++ show b
     show (FlipOper _ (b, _, _)) = "Flip " ++ show b
-    show (Repeat rt _) = "REPEAT " ++ (show . getInt . tok $ rt) ++ " TIMES:"
-    show (WhileCond be _) = "WHILE LOOP:\n"  ++
+    show (Repeat rt _ _) = "REPEAT " ++ (show . getInt . tok $ rt) ++ " TIMES:"
+    show (WhileCond be _ _) = "WHILE LOOP:\n"  ++
                             "  Condicion:\n" ++
                             unlines ( map ("    " ++ ) (lines $ show be) )
-    show (IfCondition be si fi) = "CONDICIONAL:\n" ++
+    show (IfCondition be si fi _) = "CONDICIONAL:\n" ++
                                   "  condicion:\n" ++
                                    unlines ( map ("    " ++ ) (lines $ show be) )
     show (FuncCall  fn) = "LLAMADA A FUNCION:\n  " ++ (getId . tok $ fn)
     show (BeginEnd _ b) = show b
     
     show _ = "what"
+
+--------------------------
+-- < MODULE FUNCTIONS > --
+--------------------------
+
+-- Summary: given an initial context, and an AST,
+--          return this AST with the bid setted according to 
+--          the context
+--setContext :: Int -> AST -> AST
+--setContext _ [] = []
+--setContext c (x@World{}:xs) = x:setContext (c+1) xs
+--setContext c (x@Task{instructions = ins}:xs) = 
+--    let (newc,newinst) = setContext' (c+1) ins
+--    in x{instructions = newinst}:setContext newc xs
+--
+--
+--
+--setContext' :: Int -> [TaskStmnt] -> (Int,[TaskStmnt])
+--setContext' c [] = (c,[])
+----setContext' c (x@IfCondition{succInstruction=si, failInstruction=fi}:xs) = (newc, newts)
+--
+----Returns the new context and the new stmnt
+--setContextTask :: Int -> TaskStmnt -> (Int,TaskStmnt)
+--setContextTask c ts@IfCondition{succInstruction=si,failInstruction=fi} = 
+--    let (c1, ts1) = 
