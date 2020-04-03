@@ -31,7 +31,6 @@ main = do
     
     --Intenta recibir input:
     inpt <- getArgs
-    print inpt
     case inpt of     
         [f,t,o]   -> let cbf = case o of --cbf: callback function
                                 "-a"        -> S.printAll

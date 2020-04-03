@@ -95,20 +95,49 @@ instance Show TaskStmnt where
 -- Summary: given an initial context, and an AST,
 --          return this AST with the bid setted according to 
 --          the context
---setContext :: Int -> AST -> AST
---setContext _ [] = []
---setContext c (x@World{}:xs) = x:setContext (c+1) xs
---setContext c (x@Task{instructions = ins}:xs) = 
---    let (newc,newinst) = setContext' (c+1) ins
---    in x{instructions = newinst}:setContext newc xs
---
---
---
---setContext' :: Int -> [TaskStmnt] -> (Int,[TaskStmnt])
---setContext' c [] = (c,[])
-----setContext' c (x@IfCondition{succInstruction=si, failInstruction=fi}:xs) = (newc, newts)
---
-----Returns the new context and the new stmnt
---setContextTask :: Int -> TaskStmnt -> (Int,TaskStmnt)
---setContextTask c ts@IfCondition{succInstruction=si,failInstruction=fi} = 
---    let (c1, ts1) = 
+setContext :: Int -> AST -> AST
+setContext _ [] = []
+setContext c (x@World{}:xs) = x:setContext (c+1) xs
+setContext c (x@Task{instructions = ins}:xs) = 
+    let (newc,newinst) = setContext' (c+1) ins
+    in x{instructions = newinst}:setContext newc xs
+
+
+
+setContext' :: Int -> [TaskStmnt] -> (Int,[TaskStmnt])
+setContext' c [] = (c,[])
+setContext' c (x:xs) = 
+    let
+        (c1,newx) = setContextTask c x
+        (newc,newxs) = setContext' c1 xs
+    in (newc, newx:newxs)
+
+
+--Returns the new context and the new stmnt
+setContextTask :: Int -> TaskStmnt -> (Int,TaskStmnt)
+setContextTask c ts@IfCondition{succInstruction=si,failInstruction=fi} = 
+    let 
+        (c1, newsi) = setContextTask (c+1) si
+        (c2, newfi) = setContextTask c1 fi
+        newts = ts{ibid=c, succInstruction=newsi, failInstruction=newfi}
+    in (c2,newts)
+
+setContextTask c ts@WhileCond{whileIntruct = wi} = 
+    let 
+        (c1, newwi) = setContextTask (c+1) wi
+        newts = ts{wbid=c, whileIntruct=newwi}
+    in (c1,newts)
+
+setContextTask c ts@Repeat{repInstruction = ri} = 
+    let 
+        (c1, newri) = setContextTask (c+1) ri
+        newts = ts{rbid=c, repInstruction=newri}
+    in (c1,newts)
+
+setContextTask c ts@BeginEnd{beginIntructs = bi} =
+    let 
+        (c1, newbi) = setContext' c bi
+        newts = ts{beginIntructs=newbi}
+    in (c1,newts)
+
+setContextTask c ts = (c,ts)

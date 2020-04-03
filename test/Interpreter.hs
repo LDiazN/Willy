@@ -138,25 +138,53 @@ runProgram' f = do
             runInst setoper
 
         --Run if oper
-        runInst E.IfCondition{ E.ifCondition=bexpr, E.succInstruction = si, E.failInstruction = fi} = do
+        runInst e@E.IfCondition{ E.ifCondition=bexpr, E.succInstruction = si, E.failInstruction = fi} = do
             ps <- get
-            unless (PS.programState ps==PS.End) $ 
+            unless (PS.programState ps==PS.End) $ do
+                let 
+                    st = PS.symbolTable ps
+                    ibid = E.ibid e
+
+                put ps{PS.symbolTable = ST.pushBid st ibid} --Push the if context
+
                 if PS.checkBoolExpr ps bexpr
                     then runInst si
                     else runInst fi
+                ps' <- get 
+                put ps'{PS.symbolTable = ST.popContext . PS.symbolTable $ ps'} --pop the if context
+
 
         --Run repeat 
-        runInst E.Repeat{E.repeatTimes = tkn, E.repInstruction = inst} = do
+        runInst e@E.Repeat{E.repeatTimes = tkn, E.repInstruction = inst} = do
             ps <- get 
             unless (PS.programState ps==PS.End) $ do
                 let n = T.getInt' tkn
+                    st = PS.symbolTable ps
+                    rbid = E.rbid e
+
+                put ps{PS.symbolTable = ST.pushBid st rbid} --Push repeat context
+
                 replicateM_ n (runInst inst)
+
+                ps' <- get 
+                put ps'{PS.symbolTable = ST.popContext . PS.symbolTable $ ps'} --pop the repeat context
+
+
 
         --Run while
         runInst w@E.WhileCond{E.whileCondition = wc, E.whileIntruct = wi} = do
             ps <- get
             unless (PS.programState ps==PS.End) $ do
-            when (PS.checkBoolExpr ps wc) $ runInst wi >> runInst w
+                let 
+                    st = PS.symbolTable ps
+                    wbid = E.wbid w
+
+                put ps{PS.symbolTable = ST.pushBid st wbid} --Push while context
+
+                when (PS.checkBoolExpr ps wc) $ runInst wi >> runInst w
+
+                ps' <- get 
+                put ps'{PS.symbolTable = ST.popContext . PS.symbolTable $ ps'} --pop the while context
 
         --Run BeginEnd
         runInst E.BeginEnd{E.beginIntructs = insts} = do

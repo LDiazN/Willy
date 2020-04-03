@@ -27,7 +27,7 @@ analyzer :: E.AST -> RetState()
 analyzer ast = unless (null ast) $ do
             --process all progparts:
             
-            mapM_ processProgPart ast
+            mapM_ processProgPart (E.setContext 1 ast)
             
             -- Check for errors
             ST.SymbolTable{ST.errors =  e}  <- get
