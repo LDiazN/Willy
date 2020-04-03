@@ -116,6 +116,10 @@ printVars ps = putStr str
         flat ((x:xs):xs') = x:flat (xs:xs')
         flat ([]:xs') = flat xs'
 
+--aux function:
+printItem :: PS.Item -> String
+printItem PS.Item{PS.symbol=sym,PS.amount=n} = "  -" ++ ST.symId sym ++
+                                               ": " ++ show n
 
 -- Summary: Print all the program data
 printAll :: PS.ProgramState -> IO()
@@ -131,6 +135,10 @@ printAll ps = do
 printNWait :: Int -> PS.ProgramState -> IO()
 printNWait n ps = printAll ps >> threadDelay n
 
+--For a smooth control, print with the given function and then wait
+printNWait' :: (PS.ProgramState -> IO()) -> Int -> PS.ProgramState -> IO()
+printNWait' f n ps = f ps >> threadDelay n
+
 -- Summary: Print and ask for continue
 printNContinue :: PS.ProgramState -> IO()
 printNContinue ps = do 
@@ -138,8 +146,3 @@ printNContinue ps = do
     putStrLn "presiona enter para continuar" 
     getLine 
     return ()
-
---aux function:
-printItem :: PS.Item -> String
-printItem PS.Item{PS.symbol=sym,PS.amount=n} = "  -" ++ ST.symId sym ++
-                                               ": " ++ show n

@@ -25,6 +25,8 @@ import Control.Monad
 -- -m/--manual: Realiza la ejecución paso a paso
 -- -a/--auto [segundos]*: realiza la ejecución cada [segundos]. Si no se especifica
 --                        un valor para [segundos], entonces es ejecución instantánea
+-- -q/--quick [segundos]*: imprime solo el mundo cada [segundos]. Si no se especifica un 
+--                         valor para [segundos], se ejecuta instantáneamente
 
 main :: IO()
 main = do
@@ -37,19 +39,29 @@ main = do
                                 "--auto"    -> S.printAll
                                 "-m"        -> S.printNContinue
                                 "--manual"  -> S.printNContinue
+                                "-q"        -> S.printWorldMap 
+                                "--quick"   -> S.printWorldMap 
                                 a           -> error $ "opción inválida: " ++ show a
 
-                     in if o /= "-m" && o /= "-a" && o /= "--manual" && o /= "--auto"
+                     in if  o /= "-m" && o /= "-a" && o /= "--manual" && o /= "--auto" &&
+                            o /= "-q" && o /= "--quick"
                             then putStrLn $ "Error: opciones inválidas. Opciones válidas: \n" ++
                                             "  -a/--auto [num]\n" ++ 
                                             "  -m/--manual"
                             else processFile f t cbf
 
 
-
-        [f,t,o,n] ->  if o/= "-a" && o/="--auto"
+        [f,t,o,n] ->  if o/= "-a" && o/="--auto" && o /= "-q" && o /= "--quick"
                         then putStrLn "Error: demasiados argumentos"
-                        else  processFile f t $ S.printNWait ((read . init . init . show $ (read n::Float)*1000000)::Int)
+                        else
+                            let ttw = ((read . init . init . show $ (read n::Float)*1000000)::Int)
+                                cbf = case o of 
+                                        "-a"     -> S.printNWait ttw
+                                        "--auto" -> S.printNWait ttw
+                                        "-q"     -> S.printNWait' S.printWorldMap ttw
+                                        "--quick"     -> S.printNWait' S.printWorldMap ttw
+                            in
+                                processFile f t cbf
 
         _         -> putStrLn $ "Error: formato de entrada incorrecto. Para correr un programa de Willy" ++
                                 " utilizar: \n" ++
