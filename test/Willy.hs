@@ -1,5 +1,5 @@
 -- Luis Diaz: 15-10420
--- Nathalia Silvera: 12-
+-- Nathalia Silvera: 12-10921
 -- Archivo Main Willy*
 
 import qualified Lexer as L
