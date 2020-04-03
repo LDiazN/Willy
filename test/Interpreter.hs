@@ -27,8 +27,8 @@ runProgram' f = do
 
     io $ f ps
 
-    unless (null instrs) $ foldl (\b a -> b >> runInst a) (runInst . head $ instrs) $ tail instrs
-
+    unless (null instrs) $  mapM_ runInst instrs
+                            --foldl (\b a -> b >> runInst a) (runInst . head $ instrs) $ tail instrs
     
     where 
         runInst :: E.TaskStmnt -> RunState ()
@@ -117,8 +117,51 @@ runProgram' f = do
                 setoper = E.SetOper{E.varToSet = vtf, E.boolVar=(T.boolToTok boolVar,0,0)}
             
             runInst setoper
+
+        --Run if oper
+        runInst E.IfCondition{ E.ifCondition=bexpr, E.succInstruction = si, E.failInstruction = fi} = do
+            ps <- get
+
+            if PS.checkBoolExpr ps bexpr
+                then runInst si
+                else runInst fi
+
+        --Run repeat 
+        runInst E.Repeat{E.repeatTimes = tkn, E.repInstruction = inst} = do
+            let n = T.getInt' tkn
+            replicateM_ n (runInst inst)
+
+        --Run while
+        runInst w@E.WhileCond{E.whileCondition = wc, E.whileIntruct = wi} = do
+            ps <- get
+            when (PS.checkBoolExpr ps wc) $ runInst wi >> runInst w
+
+        --Run BeginEnd
+        runInst E.BeginEnd{E.beginIntructs = insts} = mapM_ runInst insts
+
+        --Run function call
+        runInst E.FuncCall{E.funcId = fid} = do
+            ps <- get
+            let
+                id = T.getId' fid
+                st = PS.symbolTable ps
+                (instrs,context) = 
+                    case ST.findSymbol st id of
+                        Just ST.Symbol{ST.symType = ST.DefineFunc{ST.body=b,ST.fBlockId=fbid}} -> (b,fbid)
+                        Nothing -> error . show $ PS.NoSuchFunc fid
             
+            put $ ps{PS.symbolTable = ST.pushBid st context}                --load the function context
+            runInst instrs                                                  --Run the function body
+            ps' <- get                                                      --Get the resulting state
+            put $ ps'{PS.symbolTable = ST.popContext . PS.symbolTable $ ps'}--Pop the previously loaded context
+            --DEBUG
+            ps <- get
+            io . print . ST.contextStack . PS.symbolTable $ ps
+            return ()
+        
         runInst _ = return()
+
+        
 
 --Required to wrap an io monad within the state monad
 io :: IO a -> RunState a

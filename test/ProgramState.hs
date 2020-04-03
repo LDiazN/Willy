@@ -57,6 +57,7 @@ data RuntimeError = NoSuchTask{ errTaskName :: String }
                   | NoSuchObjectCurrPos{errObjTk :: T.TokPos, errCurrPos :: (Int,Int)}
                   | NoSuchObjInBasket {errObjTkBask :: T.TokPos}
                   | NoSuchBoolVar{errBoolVar :: T.TokPos}
+                  | NoSuchFunc{errFuncId :: T.TokPos}
 
 ---------------------------------------
 ---- < Helper program operations > ----
@@ -453,3 +454,9 @@ instance Show RuntimeError where
                         errBoolVar=objtk} = "Willy runtime error: Esto no es una variable booleana válida." ++
                                               "\n nombre: " ++ T.getId' objtk ++
                                               "\n Cerca de " ++ (posToString . T.pos $ objtk)
+
+    show NoSuchFunc{errFuncId=objtk} = "Willy runtime error: Esto no es una función válida en este contexto." ++
+                                       "\n nombre: " ++ T.getId' objtk ++
+                                       "\n Cerca de " ++ (posToString . T.pos $ objtk)
+
+    

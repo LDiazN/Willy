@@ -237,6 +237,19 @@ loadTask st@SymbolTable{contextStack = stk} id = st{contextStack = newstk}
         getTaskWorldbid sym
             | not . isTask . symType $ sym = error $ "The given id is not a valid task: " ++ (show . symId $ sym)
             | otherwise = wBlockId . symType . fromJust . findSymbol st . T.getId' . E.workingWorld . exprs . symType $ sym
+
+--Given a symbol table and a block id, push this id as a new context
+pushBid :: SymbolTable -> Int -> SymbolTable
+pushBid st bid = newst
+    where stk = contextStack st
+          newStk = bid:stk
+          newst = st{contextStack = newStk}
+
+--Given a symbol table, pop the current context
+popContext :: SymbolTable -> SymbolTable
+popContext st = st{contextStack = tail . contextStack $ st}
+
+
 -- aux SymTypes functions:
 --The following functions can tell is the given 
 -- symtype match an specific symtype member
