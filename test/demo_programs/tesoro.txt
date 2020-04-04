@@ -1,0 +1,97 @@
+begin-world mimundo
+
+  Start at 1 1 heading north;
+  Basket of capacity 99999999;
+
+  Boolean mytrue with initial value true;
+  World 11 11;
+
+
+  Wall east from 2 1 to 11 1;
+  Wall north from 11 1 to 11 11;
+  Wall west from 11 11 to 1 11;
+  Wall south from 1 11 to 1 3;
+  Wall east from 2 3 to 7 3;
+  Wall east from 9 3 to 10 3;
+  Wall east from 2 5 to 5 5;
+  Wall east from 7 5 to 9 5;
+  Wall east from 3 7 to 7 7;
+  Wall east from 3 9 to 5 9;
+  Wall east from 7 9 to 7 9;
+  Wall north from 7 4 to 7 9;
+  Wall north from 9 5 to 9 5;
+  Wall north from 9 7 to 9 11;
+  Wall north from 3 9 to 3 11;
+
+  Object-type circulo of color red;
+  Object-type tesoro of color green;
+
+  Place 9999999 of circulo in basket;
+
+  --Tesoro:
+  Place 1 of tesoro at 2 4;
+
+  Goal UnTesoro is 1 tesoro objects in Basket;
+
+  Final goal is UnTesoro;
+
+end-world
+
+begin-task tesoro on mimundo
+
+  -- Usando backtracking busca un tesoro.
+  -- Marca el lugar por donde ya ha pasado con circulos rojos.
+  -- Una vez conseguido el tesoro detiene su busqueda. 
+
+  define headNorth as while not looking-north do turn-left;
+  define headEast as while not looking-east do turn-left;
+  define headWest as while not looking-west do turn-left;
+  define headSouth as while not looking-south do turn-left;
+
+  define backtracking as
+    begin
+      if UnTesoro then terminate;
+      if found(tesoro) then pick tesoro;
+      if not found(circulo) then 
+        begin
+          drop circulo;
+          headNorth;
+          if front-clear then 
+            begin
+              move;
+              backtracking;
+              headSouth;
+              move;
+            end
+            headNorth;
+            if right-clear then
+              begin
+                headEast;
+                move;
+                backtracking;
+                headWest;
+                move;
+              end  
+            headNorth;
+            if left-clear then
+              begin
+                headWest;
+                move;
+                backtracking;
+                headEast;
+                move;
+              end  
+            headSouth;
+            if front-clear then 
+            begin
+              move;
+              backtracking;
+              headNorth;
+              move;
+            end
+        end 
+    end
+  
+  backtracking;
+
+end-task
