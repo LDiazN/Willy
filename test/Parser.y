@@ -160,7 +160,7 @@ import Expresions
                 | ObjectType name of color colorVal ';'       { ObjectType $2 $5 }
                 | Place int of name at pos ';'                { PlaceAt $4 $2 $6 }
                 | Place int of name in basket ';'             { PlaceIn $4 $2 }
-                | Start at pos heading direction ';'          { StartAt $3 $4 }
+                | Start at pos heading direction ';'          { StartAt $3 $5 }
                 | Basket of capacity int ';'                  { BasketCapacity $4 }
                 | Boolean name with initial value boolVal ';' { BooleanVar $2 $6}
                 | Goal name is goalTest ';'                   { Goal $2 $4 }
@@ -181,10 +181,10 @@ import Expresions
 
     task_stmt   :: { TaskStmnt }
                 -- Control --
-    task_stmt   : if boolExpr then task_stmt                  { IfCondition $2 $4 Skip }
-                | if boolExpr then task_stmt else task_stmt   { IfCondition $2 $4 $6 }
-                | repeat int times task_stmt                  { Repeat $2 $4 }
-                | while boolExpr do task_stmt                 { WhileCond $2 $4 }
+    task_stmt   : if boolExpr then task_stmt                  { IfCondition $2 $4 Skip 0 }
+                | if boolExpr then task_stmt else task_stmt   { IfCondition $2 $4 $6 0}
+                | repeat int times task_stmt                  { Repeat $2 $4 0}
+                | while boolExpr do task_stmt                 { WhileCond $2 $4 0}
                 | begin end                                   { BeginEnd $1 [] }
                 | begin task_stmts end                        { BeginEnd $1 $ reverse $2 }
                 | define name as task_stmt                    { DefineFunc $2 $4 }

@@ -1,0 +1,57 @@
+begin-world mimundo
+
+  Start at 1 1 heading north;
+  Basket of capacity 1;
+
+  Boolean mytrue with initial value true;
+  World 4 4;
+
+  Object-type northArrow of color green;
+  Object-type westArrow of color green;
+  Object-type southArrow of color green;
+  Object-type eastArrow of color green;
+  Object-type tParada of color red;
+
+  Object-type pelota of color green;
+
+  Place 1 of eastArrow at 1 1;
+  Place 1 of northArrow at 1 4;
+  Place 1 of westArrow at 4 4;
+  Place 1 of southArrow at 4 1;
+  Place 1 of tParada at 1 2;
+  Place 1 of pelota in basket;
+
+  Goal pelotica is willy is at 1 2;
+
+  Final goal is pelotica;
+
+end-world
+
+
+begin-task LanzarRecoger on mimundo
+  
+  -- En este programa Willy recorre el borde de la matriz
+  -- lanzando y recogiendo la pelota en cada celda.
+
+
+  define headNorth as while not looking-north do turn-left;
+  define headEast as while not looking-east do turn-left;
+  define headWest as while not looking-west do turn-left;
+  define headSouth as while not looking-south do turn-left;
+
+  define followArrow as 
+    if found(northArrow) then headSouth;
+    else if found(southArrow) then headNorth;
+    else if found(westArrow) then headWest;
+    else if found(eastArrow) then headEast;
+  
+  while not found(tParada) do
+    begin 
+      followArrow;
+      drop pelota;
+      pick pelota;
+      move;
+    end
+
+
+end-task

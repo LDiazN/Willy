@@ -23,14 +23,15 @@ analyzeAST :: E.AST -> IO ((), ContextState)
 analyzeAST ast = runStateT (analyzer ast) (ST.SymbolTable M.empty [0] 1 ST.NoCon []) 
 
 -- Analyze the given ast 
-analyzer :: E.AST -> RetState ()
+analyzer :: E.AST -> RetState()
 analyzer ast = unless (null ast) $ do
             --process all progparts:
             
-            mapM_ processProgPart ast
+            mapM_ processProgPart (E.setContext 1 ast)
             
             -- Check for errors
             ST.SymbolTable{ST.errors =  e}  <- get
+
             -- print Errors if needed
             unless (null e) $ io (mapM_ (putStrLn . (++ "\n")) (reverse e) >> return ())
 
@@ -45,8 +46,8 @@ analyzer ast = unless (null ast) $ do
                 Nothing -> do
                     -- Since we start a new context, push an empty context table
                     pushEmptyTable
+                    st@ST.SymbolTable{ST.contextStack = bid:_} <- get
                     -- Update state to world context:
-                    st@ST.SymbolTable{ST.contextCounter = bid} <- get
                     put st{ST.context = ST.WorldCon}
 
                     -- Create the world type
@@ -82,7 +83,7 @@ analyzer ast = unless (null ast) $ do
                     when (null fgoal) $ addError (ST.NoFinalGoal id)
                     -- pop the world context
                     popContext
-
+                    
                     -- Add the new created  world
                     void (insertSymbol $ ST.Symbol id fWorldType{ST.wBlockId = bid} 0 (T.pos name))
                     
@@ -98,19 +99,20 @@ analyzer ast = unless (null ast) $ do
 
             let id   = T.getId' name    
                 tsymType = ST.Task t bid
-                tsym = ST.Symbol (T.getId' name) tsymType 0 (T.pos name)
+                tsym = ST.Symbol id tsymType 0 (T.pos name)
             -- check if the world is a valid world
             valid <- checkTypeExst ST.isWorld ww
             -- search its context
                 -- if it is valid, then add the context of the world to the current context
-            when  valid $ do
+            when valid $ do
                     st@ST.SymbolTable{ ST.contextStack = stk} <- get 
-                    Just ST.Symbol{ST.symContext = scont} <- findSymbol (T.getId' ww)
+                    Just ST.Symbol{ ST.symType = ST.World{ST.wBlockId = scont} } <- findSymbol (T.getId' ww)
                     put st{ST.contextStack = scont:stk}
+
 
             --Push the context for the current task
             pushEmptyTable
-            
+
             -- Update the context to task context
             st  <- get
             put st{ST.context = ST.TaskCon} 
@@ -118,14 +120,16 @@ analyzer ast = unless (null ast) $ do
             -- Check the task:
             checkInstructions instrs
 
-            popContext
+            popContext -- pop task context
+            -- Pop the world if needed
+            when valid  $ void popContext
 
             -- Update the context to task context
             st  <- get
             put st{ST.context = ST.NoCon} 
             insertSymbol tsym
-            -- Pop the world if needed
-            when valid  $ void popContext
+            return ()
+
 
         -- This function gets a world statement and a world symbol type and 
         -- try to add the given property to the world
@@ -144,7 +148,7 @@ analyzer ast = unless (null ast) $ do
         -- for WorldSize checking:
         addWorldIntr w@ST.World {ST.worldSize = wsize} stmnt@(E.WorldSize rows cols) 
             | not (null wsize)       = addError (ST.RedefWSize rows)   >> return w
-            | T.getInt' rows <= 0 && T.getInt' cols <= 0 = addError (ST.InvalidWSize rows cols) >> return w
+            | T.getInt' rows <= 0 || T.getInt' cols <= 0 = addError (ST.InvalidWSize rows cols) >> return w
             | otherwise  = return w{ST.worldSize = [stmnt]}
 
         -- ObjectType checking
@@ -166,15 +170,19 @@ analyzer ast = unless (null ast) $ do
                 (wsx, wsy) = (T.getInt' $ E.rows wsize', T.getInt' $ E.cols wsize')
 
                 (pxint, pyint) = (T.getInt' px, T.getInt' py)
+
+                amntInt = T.getInt' amnt
                 
             --if the object is placed somewhere out of the world:
             if isNothing sym 
                 then addError (ST.UndefRef tkid) >> return w
             else if let stype = (ST.symType . fromJust $ sym) in not (ST.isObjType stype) 
                 then addError (ST.InvalidObjType tkid) >> return w
-            else if wsx < pxint || wsy < pyint
+            else if wsx < pxint || wsy < pyint || pxint==0 || pyint==0
                 then addError (ST.PlaceOutOfBound (wsx, wsy) (pxint, pyint) tkid) >> return w
-            else return w
+            else if amntInt == 0
+                then addError (ST.PlaceZeroAt amnt) >> return w
+            else return w{ST.placeAt = stmnt:ST.placeAt w}
 
         -- Place In checking 
         addWorldIntr w@ST.World{ST.placeIn = plin, ST.capacity = cap} stmnt@(E.PlaceIn otid amnt) = do
@@ -206,8 +214,16 @@ analyzer ast = unless (null ast) $ do
             --  1) startPos must be empty 
             --  2) given position must be between world boundaries
             --  3) given position must be out of a wall
+            --  4) given position cannot be (0,0)
             | not (null stpos) = addError (ST.RedefStartPos tkpx) >> return w
             | T.getInt' tkpx > wsx || T.getInt' tkpy > wsy = addError (ST.StartPosOOB tkpx) >> return w
+            | T.getInt' tkpx == 0 || T.getInt' tkpy == 0 = do
+                let ret = if T.getInt' tkpx==0
+                            then tkpx
+                            else tkpy 
+
+                addError $ ST.StartPosOOB ret 
+                return w
             | or wallsOverWill = addError (ST.WillyOverWall tkpx) >> return w            
             | otherwise = return w{ST.startPos = stmnt:stpos}
 
@@ -218,7 +234,7 @@ analyzer ast = unless (null ast) $ do
 
         -- Basket of capacity checking:
         addWorldIntr w@ST.World{ST.capacity = cap } stmnt@(E.BasketCapacity amnt) 
-            -- we have tu check:
+            -- we have to check:
             --  1) Capacity must be a positive integer
             --  2) No redefinition of capacity
             | T.getInt' amnt <= 0 = addError (ST.NullBaskCapacity amnt)  >> return w
@@ -237,6 +253,9 @@ analyzer ast = unless (null ast) $ do
         addWorldIntr w stmnt@(E.Goal gname gtest) = do
             -- We have to check:
             -- 1) Name is currently unavailable in the symbol table
+            -- 2) Depending on the goal type, we have to make several checks
+            -- Check the goal test for errors 
+            checkGoalTest gtest w
             -- The insertSymbol function adds the corresponding error if the symbol already exists
             insertSymbol (ST.Symbol (T.getId' gname) (ST.Goal gtest) 0 (T.pos gname))
             return w
@@ -265,7 +284,7 @@ analyzer ast = unless (null ast) $ do
         checkInstruction (E.FuncCall fname) = void (checkTypeExst ST.isDef fname)
 
         -- Check an if block
-        checkInstruction (E.IfCondition ifCond sins fins) = do
+        checkInstruction (E.IfCondition ifCond sins fins _) = do
             -- Create a new context for the if block
             pushEmptyTable
 
@@ -281,7 +300,7 @@ analyzer ast = unless (null ast) $ do
             return ()
 
         -- Check a while block
-        checkInstruction (E.WhileCond wCond inst ) = do
+        checkInstruction (E.WhileCond wCond inst _) = do
             
             -- Create a new context for the if block
             pushEmptyTable
@@ -296,7 +315,7 @@ analyzer ast = unless (null ast) $ do
             return ()
 
         --Check the repeat instruction
-        checkInstruction (E.Repeat _ inst) = do
+        checkInstruction (E.Repeat _ inst _) = do
             
             -- Create a new context for the if block
             pushEmptyTable
@@ -309,7 +328,7 @@ analyzer ast = unless (null ast) $ do
             return ()
         
         --Check the begin instruction:
-        checkInstruction (E.BeginEnd _ instrs) = void (pushEmptyTable >> checkInstructions instrs >> popContext)
+        checkInstruction (E.BeginEnd _ instrs) = void (checkInstructions instrs)
         
         --Check the define instruction:
         checkInstruction (E.DefineFunc fname finst) = do
@@ -336,13 +355,15 @@ analyzer ast = unless (null ast) $ do
         checkInstruction (E.Drop oid) = void $ checkTypeExst ST.isObjType oid
 
         -- check set
-        checkInstruction (E.SetOper _ oid) = void $ checkTypeExst ST.isBool oid
+        checkInstruction (E.SetOper oid _) = void $ checkTypeExst ST.isBool oid
 
         -- check Clear
         checkInstruction (E.ClearOper _ oid) = void $ checkTypeExst ST.isBool oid
 
         --check flip
         checkInstruction (E.FlipOper _ oid) = void $ checkTypeExst ST.isBool oid
+
+
 
         checkInstruction _ = return ()
 
@@ -379,7 +400,47 @@ analyzer ast = unless (null ast) $ do
                             )
         
         isWillyOverWall _ _ _= False
-                
+
+        -- Given a GoalTest and the world limits checks if its correct. If it is not, then addError
+        -- and return False. Otherwise returns True.
+        checkGoalTest :: E.GoalTest -> ST.SymType -> RetState Bool
+        --Check willyAt
+        checkGoalTest gt@E.WillyAt{ E.willyAtPos = tp} w = goalCheckBounds tp w
+
+        --Check WillyObjectsAt
+            --To check a WillyObjectsAt test, we have to check
+            -- 1) position is within world boundaries
+            -- 2) id exists
+            -- 3) id is an object type
+        checkGoalTest gt@E.WillyObjectsAt{ E.objIdAt = tkid, E.objsPos = tkpos} w = do
+            -- 1) check boundaries:
+            boundOk <- goalCheckBounds tkpos w
+
+            -- 2) Check id existense and type
+            symOk <- checkTypeExst ST.isObjType tkid
+
+            return $ symOk && boundOk
+
+        -- Check WillyBasketObjs
+            -- To check objexts in basket, we hace to check:
+            -- 1) id exists
+            -- 2) id names an object type
+        
+        checkGoalTest gt@E.WillyBasketObjs{ E.objIdBask = tkid} _ = checkTypeExst ST.isObjType tkid
+
+        --Aux Function: Check if the given position is within the given world boundaries
+        goalCheckBounds :: (T.TokPos, T.TokPos) -> ST.SymType -> RetState Bool
+        goalCheckBounds tp@(tkpx, tkpy) w@ST.World{ST.worldSize = st} = do
+            let (wsx, wsy) = if null st 
+                                then (1,1)
+                                else (T.getInt' . E.rows . head $ st, T.getInt' . E.cols . head $ st)
+
+                (tkpxInt, tkpyInt) = (T.getInt' tkpx, T.getInt' tkpy)
+            
+            if tkpxInt == 0 || tkpyInt == 0 || tkpxInt > wsx || tkpyInt > wsy
+                then addError (ST.GoalOutOfBound tp (wsx, wsy)) >> return True
+                else return False
+        
 
 -- Add a new symbol table. In fact, just update the context stack and increase the
 -- next-context counter
@@ -393,7 +454,11 @@ popContext :: RetState Int
 popContext = do
     st@(ST.SymbolTable _ stk _ _ _) <- get
     unless (null stk) $ put st{ ST.contextStack = tail stk } --unless context stack is empty, replace it with tail
-    return $ head stk
+
+    if not (null stk)
+        then return $ head stk
+        else return $ -1
+    
 
 -- Tells if the context stack is empty
 emptyContext :: RetState Bool
@@ -489,8 +554,8 @@ checkTypeExst f id = do
 
 -- Given a Boolean expresion, tells if the Expresion contains correct symbols.
 -- If it doesn't, then add the corresponding errors to the error stack
-checkBoolExpr :: E.BoolExpr -> RetState Bool
-checkBoolExpr be = and <$> mapM (checkTypeExst isBool') (names be)
+checkBoolExpr' :: E.BoolExpr -> RetState Bool
+checkBoolExpr' be = and <$>  mapM (checkTypeExst isBool') (names be)  
     where 
         -- This function returns all the variable names in a bool expr
         names :: E.BoolExpr -> [T.TokPos]
@@ -502,7 +567,30 @@ checkBoolExpr be = and <$> mapM (checkTypeExst isBool') (names be)
         isBool' :: ST.SymType -> Bool
         isBool' s = ST.isBool s || ST.isGoal s
 
--- adds the given error to the world erros
+checkBoolExpr :: E.BoolExpr -> RetState Bool
+checkBoolExpr be = do
+    --Check if every bool id is a correct id
+    idsok <- checkBoolExpr' be
+
+    --Check if every Query has an id as argument
+    qsok <- checkQuery be
+
+    return $ idsok && qsok
+
+    where 
+        --Checks if every query in a bool expresion has an objtype as an argument
+        checkQuery :: E.BoolExpr -> RetState Bool
+        checkQuery E.Query{E.targetName = tn} = checkTypeExst ST.isObjType tn
+        checkQuery E.Operation{E.operand1 = op1, E.operand2 = op2} = do
+            q1 <- checkQuery op1
+            q1 <- checkQuery op2
+
+            return $ q1 && q1
+        checkQuery _ = return True
+
+
+
+-- adds the given error to the world errosreturn $ head stk
 addError :: ST.Error -> RetState ()
 addError err = do
     st@ST.SymbolTable{ ST.errors = oldErrs} <- get
@@ -514,4 +602,11 @@ retStateWrap = return
 
 -- Needed to use IO within State monad context
 io :: IO a -> StateT ContextState IO a
-io = liftIO
+io = liftIO  
+
+-- Debug function: print the current state
+debugPrintState :: RetState ()
+debugPrintState = do
+    st <- get
+    io $ print st
+
