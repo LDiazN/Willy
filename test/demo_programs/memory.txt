@@ -1,0 +1,52 @@
+begin-world mimundo
+  World 10 10;
+  Start at 1 5 heading east;
+  Basket of capacity 100;
+
+
+  Boolean mytrue with initial value true;
+  
+  Object-type flag of color green;
+
+  Place 1 of flag at 10 5;
+  
+  Goal goal1 is willy is at 1 5;
+  Goal goal2 is 1 flag objects in Basket;
+
+  Final goal is goal1 and goal2;
+
+end-world
+
+
+begin-task memory on mimundo
+
+  
+  --  Willy no tiene estructuras de datos muy complicadas, lo cual le impide
+  --  guardar información que podría ser muy útil para resolver problemas. 
+  --  Sin embargo, su capacidad para ejecutar funciones recursivas le permite
+  --  implementar implícitamente una pila para recordar algunas cosas
+  --  (de donde vino, por ejemplo). En este demo mostramos cómo utilizar
+  --  esta estrategia para tomar un objeto y luego volver a la posición inicial.
+  
+
+  define headNorth as while not looking-north do turn-left;
+  define headEast as while not looking-east do turn-left;
+  define headWest as while not looking-west do turn-left;
+  define headSouth as while not looking-south do turn-left;
+
+  define goAndComeBack as
+    begin 
+      if found(flag) then pick flag;
+      if not carrying(flag) then 
+        begin
+          move;
+          goAndComeBack;
+          headWest;
+          move;
+        end
+    end
+
+
+    goAndComeBack;
+
+end-task
