@@ -1,0 +1,77 @@
+begin-world mimundo
+
+  Start at 1 1 heading west;
+  Basket of capacity 100;
+
+  Boolean mimundo with initial value  true;
+  World 5 5;
+
+  Object-type food of color green;
+
+  Place 20 of food in basket;
+
+  Goal mygoal is 0 food objects in Basket;
+  Final goal is mygoal;
+
+end-world
+
+begin-task food on mimundo
+
+  -- Con ayuda de willy se reparte comida
+  -- Solo debe repartirse una comida por persona (1 por celda)
+  -- Willy deja de repartir comida una vez se vacia su cesta.
+  -- Usando backtracking 
+
+  define headNorth as while not looking-north do turn-right;
+  define headEast as while not looking-east do turn-right;
+  define headWest as while not looking-west do turn-right;
+  define headSouth as while not looking-south do turn-right;
+
+  define backtracking as
+    begin
+    	if not carrying(food) then terminate;
+   			if carrying(food) then
+   				if not found(food) then  
+
+        			begin
+          			drop food;
+          			headNorth;
+          			if front-clear then 
+            			begin
+              				move;
+              				backtracking;
+              				headSouth;
+              				move;
+            			end
+            			headNorth;
+            			if right-clear then
+              			begin
+	                	headEast;
+    	            	move;
+        	        	backtracking;
+            	    	headWest;
+                		move;
+              			end  
+            			headNorth;
+            			if left-clear then
+              			begin
+	                		headWest;
+    	            		move;
+        	        		backtracking;
+            	    		headEast;
+	                		move;
+    	          		end  
+            			headSouth;
+            			if front-clear then 
+            			begin
+              			move;
+              			backtracking;
+              			headNorth;
+              			move;
+		            	end
+        			end 
+    			end
+  
+		  backtracking;
+
+end-task
