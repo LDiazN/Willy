@@ -113,7 +113,8 @@ printVars para imprimir el estado de las variables booleanas. printAlls, para
 imprimir todo. 
 
 **Carpeta demo:** Esta carpeta contiene archivos con el formato .txt para 
-demostrar las funciones de Willy.  
+demostrar las funciones de Willy. Cada archivo contiene una pequeña descripcion
+de lo que hace. 
 
 **Ejecucion:** Ejecutar el comando "Make" en la carperta principal,
 luego debe usar el ejecutable ./Willy [nombre del archivo] [nombre de task] [options]
