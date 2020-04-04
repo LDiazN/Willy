@@ -363,6 +363,8 @@ analyzer ast = unless (null ast) $ do
         --check flip
         checkInstruction (E.FlipOper _ oid) = void $ checkTypeExst ST.isBool oid
 
+
+
         checkInstruction _ = return ()
 
         -- aux function, given a RetState-wrapped symtype, and a world statement, 
