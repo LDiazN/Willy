@@ -220,7 +220,6 @@ displayTokens toks =
     if null errs  && closingBraces == 0 then do
         putStrLn "Análisis Léxico ok"  
         return True
-
     else
         do 
             putStrLn (displayErrors errs closingBraces )

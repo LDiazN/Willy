@@ -6,7 +6,10 @@ module SymbolTable where
 import qualified Expresions as E
 import qualified Tokens as T
 import qualified Data.Map as M
-
+import Data.Typeable
+import Data.List
+import Data.Function
+import Data.Maybe
 -- The possible symbols:
 data SymType = BoolVar  {initVal :: T.TokPos}
              | ObjType  {objColor :: E.WorldStmnt}
@@ -19,6 +22,7 @@ data SymType = BoolVar  {initVal :: T.TokPos}
                     capacity :: [E.WorldStmnt], 
                     finalGoal :: [E.WorldStmnt], 
                     placeIn :: [E.WorldStmnt],
+                    placeAt :: [E.WorldStmnt],
                     wBlockId :: Int
                     } 
              | Task{ exprs :: E.ProgPart, tBlockId :: Int }
@@ -27,13 +31,13 @@ data SymType = BoolVar  {initVal :: T.TokPos}
 
 -- Symbol type: Useful information about a symbol
 data Symbol = Symbol {
-                symId      :: String,
-                symType    :: SymType,
-                symContext :: Int,
-                symPos     :: (Int,Int)
+                symId      :: String,   --Symbol id
+                symType    :: SymType,  --Aditional data depending on the symboltype
+                symContext :: Int,      --declaration context
+                symPos     :: (Int,Int) --Symbol position in the file
             }
 
-            deriving(Show)
+            deriving(Show, Eq)
 
 -- SymbolTable type: useful information for context check
 data SymbolTable = SymbolTable{
@@ -42,7 +46,7 @@ data SymbolTable = SymbolTable{
     contextCounter :: Int,
     context        :: Context,
     errors         :: [String]
-}
+} deriving(Show)
 
 -- Enumerator with all the possible contexts
 data Context = NoCon | WorldCon | TaskCon
@@ -55,6 +59,7 @@ data Error = SymRedef{ redefinedSym :: Symbol }
            | InvalidWSize{ invRows :: T.TokPos, invCols :: T.TokPos}
            | RedefWSize{ redefWSPos :: T.TokPos }
            | PlaceOutOfBound{ worldbound :: (Int,Int), objPos :: (Int,Int), plcPos::T.TokPos}
+           | PlaceZeroAt{placeAtZeroPos :: T.TokPos}
            | UndefRef{ undefId :: T.TokPos }
            | InvalidObjType { invOTId :: T.TokPos }
            | CapacityExceeded { excObId :: T.TokPos, excAmnt :: T.TokPos, excPos :: T.TokPos }
@@ -65,6 +70,7 @@ data Error = SymRedef{ redefinedSym :: Symbol }
            | WillyOverWall{ wowPos :: T.TokPos }
            | RedefBaskCapacity{ redefBskPos :: T.TokPos }
            | NullBaskCapacity{ nullbskPos :: T.TokPos }
+           | GoalOutOfBound{ gGivenPos :: (T.TokPos, T.TokPos), gWorldSize :: (Int, Int) }
            | RedefFGoal{ fgPos :: T.TokPos }
            | NoFinalGoal{ fgworldName :: String }
 
@@ -114,6 +120,9 @@ instance Show Error where
                                                 "\n    Posición del objeto: " ++ show objpos ++
                                                 "\nCerca de línea " ++ posToString (T.pos plpos)
 
+    show (PlaceZeroAt pos) = "Willy Context Error: No se pueden posicionar 0 objetos."++  
+                             "\nCerca de línea " ++ posToString (T.pos pos)
+
     show (UndefRef tkid) = "Willy Context Error: Referencia a nombre sin definir."++
                            "\n   Nombre: " ++ T.getId' tkid ++
                            "\nEn " ++ posToString ( T.pos tkid)
@@ -150,16 +159,97 @@ instance Show Error where
                                    "\n    Tamaño dado: " ++ show (T.getInt' pos) ++
                                    "\nCerca de " ++ posToString (T.pos pos)
 
+    show (GoalOutOfBound givpos wsize) = "Willy Context Error: Error en definición de objetivo." ++
+                                         "\n    La posición dada no se encuentra dentro de los límites del mundo." ++
+                                         "\n    Posición dada: " ++ show (T.getInt' . fst $ givpos, T.getInt' . snd $ givpos) ++ 
+                                         "\n    Tamaño del mundo: " ++ show wsize ++
+                                         "\nCerca de " ++ posToString (T.pos $ fst givpos)
+
     show (RedefFGoal pos) = "Willy Context Error: Redefinición de objetivo final" ++
                             "\nEn " ++ posToString (T.pos pos)
 
     show (NoFinalGoal name) = "Willy Context Error: Sin definición de objetivo final." ++
                               "\n   En el mundo nombrado por: \"" ++ name ++ "\"" 
 
+
 -- This function returns a formated string with a position in file
 posToString :: (Int, Int) -> String
 posToString pos = "linea: " ++ (show . fst ) pos ++ 
                   ", columna: " ++ (show . snd ) pos
+
+--Aux SymbolTable functions
+-- Given an id and a SymbolTable, returns nothing or the symbol related to such id
+findSymbol :: SymbolTable -> String  -> Maybe Symbol
+findSymbol st@SymbolTable{contextStack = stk, symbolMap = m} name = case M.lookup name m of
+                                                                        Nothing     -> Nothing
+                                                                        Just syms   -> maybeMaxBy (compare `on` symContext) (filter (available stk) syms)
+    where         
+        available :: [Int] -> Symbol -> Bool
+        available xs (Symbol _ _ c _) = foldl (\b a -> c==a || b) False xs
+
+        maybeMaxBy ::  (a -> a -> Ordering) -> [a] -> Maybe a
+        maybeMaxBy f [] = Nothing
+        maybeMaxBy f l = Just $ maximumBy f l
+
+-- Set the current val of a boolean variable to the given one
+setVal :: SymbolTable -> String -> Bool -> SymbolTable
+setVal st id b = st{symbolMap=newSymMap}
+    where
+        newVal = (T.boolToTok b, 0,0)
+
+        symMap = symbolMap st
+
+        sym = case findSymbol st id of
+                    Just s@Symbol{symType=BoolVar{}} -> s
+
+                    _ -> error $ "Error: esta variable no está disponible en este contexto o no es booleana." ++
+                                "\n Variable: " ++ id
+
+        newSym = sym{symType = BoolVar{initVal=newVal}}
+
+        newList = case M.lookup id symMap of
+                    Nothing -> error $ "Error: Este símbolo no existe en la tabla: " ++ id
+                    Just l  -> replace sym newSym l
+
+        newSymMap = M.insert id newList symMap
+
+        --Aux: replace first occurence of an item in the list
+        replace :: (Eq a) => a -> a -> [a] -> [a]
+        replace _ _ [] = []
+        replace a1 a2 (x:xs) 
+            | a1==x     = a2:xs
+            | otherwise = a1:replace a1 a2 xs
+
+-- Given a symbolTable, an id, returns the symbolTable with the context related to 
+-- this symbol loaded. If the symbol does not exists, returns the same symbol table
+loadTask :: SymbolTable -> String -> SymbolTable
+loadTask st@SymbolTable{contextStack = stk} id = st{contextStack = newstk}
+    where 
+        newstk = case findSymbol st id of
+                    Nothing -> stk
+                    Just sym -> getTbid sym:getTaskWorldbid sym:stk
+        getTbid :: Symbol -> Int
+        getTbid sym
+            | not . isTask . symType $ sym = error $ "The given id is not a valid task: " ++ (show . symId $ sym)
+            | otherwise = tBlockId . symType $ sym
+
+        getTaskWorldbid :: Symbol -> Int
+        getTaskWorldbid sym
+            | not . isTask . symType $ sym = error $ "The given id is not a valid task: " ++ (show . symId $ sym)
+            | otherwise = wBlockId . symType . fromJust . findSymbol st . T.getId' . E.workingWorld . exprs . symType $ sym
+
+--Given a symbol table and a block id, push this id as a new context
+pushBid :: SymbolTable -> Int -> SymbolTable
+pushBid st bid = newst
+    where stk = contextStack st
+          newStk = bid:stk
+          newst = st{contextStack = newStk}
+              
+
+--Given a symbol table, pop the current context
+popContext :: SymbolTable -> SymbolTable
+popContext st = st{contextStack = tail . contextStack $ st}
+
 
 -- aux SymTypes functions:
 --The following functions can tell is the given 
@@ -190,4 +280,4 @@ isObjType _ = False
 
 -- Empty constructor for symtypes
 emptyWorld :: SymType
-emptyWorld = World [] [] [] [] [] [] 0
+emptyWorld = World [] [] [] [] [] [] [] 0
