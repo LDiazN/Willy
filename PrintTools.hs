@@ -139,18 +139,18 @@ processInstruction il ins =
     case ins of 
         E.DefineFunc _ fIns         -> increaseState >> contextChecker fIns
 
-        ic@(E.IfCondition _ si fi)-> putOnState (identString il (show ic)) >>
+        ic@(E.IfCondition _ si fi _)-> putOnState (identString il (show ic)) >>
                                     putOnState  (identString (il+1) "Intruccion en exito:") >>
                                     processInstruction (il + 2) si >>
                                     when ( fi /= E.Skip ) 
                                         (putOnState (identString (il+1) "Intruccion en fracaso:")) >>
                                         processInstruction (il + 2) fi 
 
-        rp@(E.Repeat rt inst)     -> increaseState                         >>
+        rp@(E.Repeat rt inst _)     -> increaseState                         >>
                                     putOnState (identString il $ show rp) >>
                                     processInstruction (il + 1) inst
 
-        wl@(E.WhileCond _ inst)   -> increaseState                         >>
+        wl@(E.WhileCond _ inst _)   -> increaseState                         >>
                                     putOnState (identString il $ show wl) >>
                                     processInstruction  (il + 1) inst
 
@@ -167,13 +167,13 @@ contextChecker :: E.TaskStmnt -> StateT CurrentContext IO ()
 contextChecker tsk = case tsk of 
     -- Si es un if, incrementa el estado del contexto, revisa los contextos de la instruccion 
     -- de exito y la de fail
-    E.IfCondition _ si fi -> increaseState >> contextChecker si >> contextChecker fi 
+    E.IfCondition _ si fi _ -> increaseState >> contextChecker si >> contextChecker fi 
     -- Si es un define, aumenta y revisa el contexto de las instrucciones internas
-    E.DefineFunc _ ins    -> increaseState >> contextChecker ins 
-    E.Repeat _ ins        -> increaseState >> contextChecker ins 
-    E.WhileCond _ ins     -> increaseState >> contextChecker ins 
-    E.BeginEnd _ (t:ts)   -> increaseState >> foldl (\b a -> b >> contextChecker a) (contextChecker t) ts >> return ()
-    _                   -> return ()
+    E.DefineFunc _ ins      -> increaseState >> contextChecker ins 
+    E.Repeat _ ins _        -> increaseState >> contextChecker ins 
+    E.WhileCond _ ins _     -> increaseState >> contextChecker ins 
+    E.BeginEnd _ (t:ts)     -> increaseState >> foldl (\b a -> b >> contextChecker a) (contextChecker t) ts >> return ()
+    _                       -> return ()
 
 -- Aumenta el estado de contexto actual
 increaseState :: StateT CurrentContext IO ()
